@@ -14,16 +14,451 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      activity_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: unknown
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: unknown
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: unknown
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      airdrops: {
+        Row: {
+          created_at: string
+          id: string
+          last_claim_at: string | null
+          tokens_claimed: number
+          tokens_earned: number
+          tokens_locked: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_claim_at?: string | null
+          tokens_claimed?: number
+          tokens_earned?: number
+          tokens_locked?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_claim_at?: string | null
+          tokens_claimed?: number
+          tokens_earned?: number
+          tokens_locked?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      app_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      currencies: {
+        Row: {
+          created_at: string
+          exchange_rate: number
+          id: string
+          is_active: boolean
+          name: string
+          symbol: string
+          total_supply: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          exchange_rate?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          symbol: string
+          total_supply?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          exchange_rate?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          symbol?: string
+          total_supply?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          last_streak_date: string | null
+          level: number
+          referral_code: string | null
+          referred_by: string | null
+          streak_days: number
+          telegram_id: number | null
+          updated_at: string
+          user_id: string
+          username: string | null
+          xp: number
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          last_streak_date?: string | null
+          level?: number
+          referral_code?: string | null
+          referred_by?: string | null
+          streak_days?: number
+          telegram_id?: number | null
+          updated_at?: string
+          user_id: string
+          username?: string | null
+          xp?: number
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          last_streak_date?: string | null
+          level?: number
+          referral_code?: string | null
+          referred_by?: string | null
+          streak_days?: number
+          telegram_id?: number | null
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+          xp?: number
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          level: number
+          referred_id: string
+          referrer_id: string
+          reward_amount: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level?: number
+          referred_id: string
+          referrer_id: string
+          reward_amount?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level?: number
+          referred_id?: string
+          referrer_id?: string
+          reward_amount?: number
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          created_at: string
+          current_completions: number
+          description: string | null
+          id: string
+          is_daily: boolean
+          is_limited: boolean
+          max_completions: number | null
+          reward_amount: number
+          reward_currency_id: string | null
+          status: string
+          title: string
+          type: string
+          updated_at: string
+          url: string | null
+          verification_type: string
+        }
+        Insert: {
+          created_at?: string
+          current_completions?: number
+          description?: string | null
+          id?: string
+          is_daily?: boolean
+          is_limited?: boolean
+          max_completions?: number | null
+          reward_amount?: number
+          reward_currency_id?: string | null
+          status?: string
+          title: string
+          type?: string
+          updated_at?: string
+          url?: string | null
+          verification_type?: string
+        }
+        Update: {
+          created_at?: string
+          current_completions?: number
+          description?: string | null
+          id?: string
+          is_daily?: boolean
+          is_limited?: boolean
+          max_completions?: number | null
+          reward_amount?: number
+          reward_currency_id?: string | null
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          url?: string | null
+          verification_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_reward_currency_id_fkey"
+            columns: ["reward_currency_id"]
+            isOneToOne: false
+            referencedRelation: "currencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          currency_id: string | null
+          description: string | null
+          id: string
+          reference_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency_id?: string | null
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency_id?: string | null
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_currency_id_fkey"
+            columns: ["currency_id"]
+            isOneToOne: false
+            referencedRelation: "currencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_balances: {
+        Row: {
+          balance: number
+          currency_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          currency_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          currency_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_balances_currency_id_fkey"
+            columns: ["currency_id"]
+            isOneToOne: false
+            referencedRelation: "currencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          status: string
+          task_id: string
+          user_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          task_id: string
+          user_id: string
+          verified_at?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          task_id?: string
+          user_id?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_tasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      withdrawal_requests: {
+        Row: {
+          admin_note: string | null
+          amount: number
+          created_at: string
+          currency_id: string | null
+          fee_amount: number
+          id: string
+          method: string
+          processed_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          wallet_address: string | null
+        }
+        Insert: {
+          admin_note?: string | null
+          amount: number
+          created_at?: string
+          currency_id?: string | null
+          fee_amount?: number
+          id?: string
+          method: string
+          processed_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          wallet_address?: string | null
+        }
+        Update: {
+          admin_note?: string | null
+          amount?: number
+          created_at?: string
+          currency_id?: string | null
+          fee_amount?: number
+          id?: string
+          method?: string
+          processed_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          wallet_address?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawal_requests_currency_id_fkey"
+            columns: ["currency_id"]
+            isOneToOne: false
+            referencedRelation: "currencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +585,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
