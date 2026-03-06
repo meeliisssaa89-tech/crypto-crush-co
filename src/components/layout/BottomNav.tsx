@@ -1,6 +1,7 @@
 import { Home, DollarSign, Gift, Wallet, User } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { hapticFeedback } from "@/hooks/useTelegram";
 
 const tabs = [
   { id: "home", icon: Home, label: "Home" },
