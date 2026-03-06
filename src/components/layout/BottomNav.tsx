@@ -29,7 +29,7 @@ const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => onTabChange(tab.id)}
+                  onClick={() => { hapticFeedback.selection(); onTabChange(tab.id); }}
                   className="relative flex flex-col items-center gap-0.5 px-3 py-1.5 transition-colors"
                 >
                   {isActive && (

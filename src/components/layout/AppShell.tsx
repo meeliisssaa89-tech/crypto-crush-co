@@ -19,6 +19,15 @@ const screens: Record<TabId, React.ComponentType> = {
 const AppShell = () => {
   const [activeTab, setActiveTab] = useState<TabId>("home");
 
+  useEffect(() => {
+    if (activeTab !== "home") {
+      const cleanup = showBackButton(() => setActiveTab("home"));
+      return cleanup;
+    } else {
+      hideBackButton();
+    }
+  }, [activeTab]);
+
   const Screen = screens[activeTab];
 
   return (
