@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import BottomNav, { type TabId } from "./BottomNav";
 import HomeScreen from "@/components/screens/HomeScreen";
@@ -6,6 +6,7 @@ import EarnScreen from "@/components/screens/EarnScreen";
 import AirdropScreen from "@/components/screens/AirdropScreen";
 import WalletScreen from "@/components/screens/WalletScreen";
 import ProfileScreen from "@/components/screens/ProfileScreen";
+import { showBackButton, hideBackButton } from "@/hooks/useTelegram";
 
 const screens: Record<TabId, React.ComponentType> = {
   home: HomeScreen,
