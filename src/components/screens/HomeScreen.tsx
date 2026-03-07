@@ -1,10 +1,58 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Flame, Gift, Box, Zap, Trophy, Clock, ChevronRight, Star } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import SpinWheel from "@/components/modals/SpinWheel";
+import MysteryBox from "@/components/modals/MysteryBox";
 
 const HomeScreen = () => {
-  const streakDays = 5;
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<any>(null);
+  const [showSpin, setShowSpin] = useState(false);
+  const [showMystery, setShowMystery] = useState(false);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+      fetchActivity();
+    }
+  }, [user]);
+
+  const fetchProfile = async () => {
+    if (!user) return;
+    const { data } = await supabase.from("profiles").select("*").eq("user_id", user.id).single();
+    if (data) setProfile(data);
+  };
+
+  const fetchActivity = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    if (data) setRecentActivity(data);
+  };
+
+  const streakDays = profile?.streak_days ?? 0;
   const totalStreakDays = 7;
+  const username = profile?.username ?? user?.email?.split("@")[0] ?? "User";
+  const level = profile?.level ?? 1;
+  const xp = profile?.xp ?? 0;
+
+  const formatTime = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  };
 
   return (
     <div className="px-4 pt-6 pb-4 space-y-5">
@@ -12,7 +60,7 @@ const HomeScreen = () => {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">Welcome back</p>
-          <h1 className="text-xl font-display font-bold text-foreground">CryptoEarner</h1>
+          <h1 className="text-xl font-display font-bold text-foreground">{username}</h1>
         </div>
         <div className="glass rounded-full px-3 py-1.5 flex items-center gap-1.5">
           <Flame className="h-4 w-4 text-warning" />
@@ -28,20 +76,16 @@ const HomeScreen = () => {
       >
         <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/5 -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-white/5 translate-y-1/2 -translate-x-1/2" />
-        <p className="text-sm text-white/70 mb-1">Total Balance</p>
-        <h2 className="text-3xl font-display font-bold text-white mb-3">12,450.00</h2>
+        <p className="text-sm text-white/70 mb-1">Level {level}</p>
+        <h2 className="text-3xl font-display font-bold text-white mb-3">{xp.toLocaleString()} XP</h2>
         <div className="flex gap-4">
           <div>
-            <p className="text-[10px] text-white/50 uppercase tracking-wider">Coins</p>
-            <p className="text-sm font-semibold text-white">8,200</p>
+            <p className="text-[10px] text-white/50 uppercase tracking-wider">Streak</p>
+            <p className="text-sm font-semibold text-white">{streakDays} days</p>
           </div>
           <div>
-            <p className="text-[10px] text-white/50 uppercase tracking-wider">Points</p>
-            <p className="text-sm font-semibold text-white">3,150</p>
-          </div>
-          <div>
-            <p className="text-[10px] text-white/50 uppercase tracking-wider">Tokens</p>
-            <p className="text-sm font-semibold text-white">1,100</p>
+            <p className="text-[10px] text-white/50 uppercase tracking-wider">Level</p>
+            <p className="text-sm font-semibold text-white">{level}</p>
           </div>
         </div>
       </motion.div>
@@ -74,22 +118,35 @@ const HomeScreen = () => {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-3 gap-3">
-        {[
-          { icon: Star, label: "Spin Wheel", gradient: "gradient-primary" },
-          { icon: Box, label: "Mystery Box", gradient: "gradient-warning" },
-          { icon: Gift, label: "Daily Bonus", gradient: "gradient-earn" },
-        ].map((action) => (
-          <motion.button
-            key={action.label}
-            whileTap={{ scale: 0.95 }}
-            className="glass rounded-xl p-3 flex flex-col items-center gap-2 relative overflow-hidden"
-          >
-            <div className={`w-10 h-10 ${action.gradient} rounded-xl flex items-center justify-center`}>
-              <action.icon className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-[11px] font-medium text-foreground">{action.label}</span>
-          </motion.button>
-        ))}
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setShowSpin(true)}
+          className="glass rounded-xl p-3 flex flex-col items-center gap-2 relative overflow-hidden"
+        >
+          <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center">
+            <Star className="h-5 w-5 text-white" />
+          </div>
+          <span className="text-[11px] font-medium text-foreground">Spin Wheel</span>
+        </motion.button>
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setShowMystery(true)}
+          className="glass rounded-xl p-3 flex flex-col items-center gap-2 relative overflow-hidden"
+        >
+          <div className="w-10 h-10 gradient-warning rounded-xl flex items-center justify-center">
+            <Box className="h-5 w-5 text-white" />
+          </div>
+          <span className="text-[11px] font-medium text-foreground">Mystery Box</span>
+        </motion.button>
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          className="glass rounded-xl p-3 flex flex-col items-center gap-2 relative overflow-hidden"
+        >
+          <div className="w-10 h-10 gradient-earn rounded-xl flex items-center justify-center">
+            <Gift className="h-5 w-5 text-white" />
+          </div>
+          <span className="text-[11px] font-medium text-foreground">Daily Bonus</span>
+        </motion.button>
       </div>
 
       {/* Limited Offer FOMO */}
@@ -120,10 +177,10 @@ const HomeScreen = () => {
             <Trophy className="h-4 w-4 text-primary" />
             <span className="text-sm font-semibold text-foreground">Level Progress</span>
           </div>
-          <span className="text-xs gradient-text font-bold">Lv. 12</span>
+          <span className="text-xs gradient-text font-bold">Lv. {level}</span>
         </div>
-        <Progress value={68} className="h-2 bg-muted" />
-        <p className="text-[10px] text-muted-foreground mt-1">6,800 / 10,000 XP to Level 13</p>
+        <Progress value={(xp % 1000) / 10} className="h-2 bg-muted" />
+        <p className="text-[10px] text-muted-foreground mt-1">{xp} / {(level) * 1000} XP to Level {level + 1}</p>
       </div>
 
       {/* Recent Activity */}
@@ -135,21 +192,24 @@ const HomeScreen = () => {
           </button>
         </div>
         <div className="space-y-2">
-          {[
-            { action: "Task completed", amount: "+50", type: "coins", time: "2m ago" },
-            { action: "Referral bonus", amount: "+120", type: "points", time: "15m ago" },
-            { action: "Daily bonus claimed", amount: "+200", type: "coins", time: "1h ago" },
-          ].map((item, i) => (
-            <div key={i} className="glass rounded-lg p-3 flex items-center justify-between">
-              <div>
-                <p className="text-sm text-foreground">{item.action}</p>
-                <p className="text-[10px] text-muted-foreground">{item.time}</p>
+          {recentActivity.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">No activity yet. Complete tasks to earn!</p>
+          ) : (
+            recentActivity.map((item) => (
+              <div key={item.id} className="glass rounded-lg p-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-foreground">{item.description || item.type}</p>
+                  <p className="text-[10px] text-muted-foreground">{formatTime(item.created_at)}</p>
+                </div>
+                <span className="text-sm font-semibold text-earn">+{item.amount} coins</span>
               </div>
-              <span className="text-sm font-semibold text-earn">{item.amount} {item.type}</span>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
+
+      <SpinWheel open={showSpin} onOpenChange={setShowSpin} />
+      <MysteryBox open={showMystery} onOpenChange={setShowMystery} />
     </div>
   );
 };
