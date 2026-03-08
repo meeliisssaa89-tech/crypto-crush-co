@@ -1,25 +1,42 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Flame, Gift, Box, Zap, Trophy, Clock, ChevronRight, Star } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Flame, Gift, Box, Zap, Trophy, Clock, ChevronRight, Star, Send, Users, Calendar } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useTG } from "@/components/layout/TelegramProvider";
+import { hapticFeedback, openTelegramLink } from "@/hooks/useTelegram";
 import SpinWheel from "@/components/modals/SpinWheel";
 import MysteryBox from "@/components/modals/MysteryBox";
+import DailyBonus from "@/components/modals/DailyBonus";
+import { toast } from "sonner";
 
 const HomeScreen = () => {
   const { user } = useAuth();
+  const { isTelegram, user: tgUser } = useTG();
   const [profile, setProfile] = useState<any>(null);
   const [showSpin, setShowSpin] = useState(false);
   const [showMystery, setShowMystery] = useState(false);
+  const [showDaily, setShowDaily] = useState(false);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [limitedOfferTimer, setLimitedOfferTimer] = useState(9252);
+  const [completedToday, setCompletedToday] = useState(0);
 
   useEffect(() => {
     if (user) {
       fetchProfile();
       fetchActivity();
+      fetchTodayTasks();
     }
   }, [user]);
+
+  // Countdown timer
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLimitedOfferTimer(prev => prev > 0 ? prev - 1 : 86400);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchProfile = async () => {
     if (!user) return;
@@ -38,11 +55,41 @@ const HomeScreen = () => {
     if (data) setRecentActivity(data);
   };
 
+  const fetchTodayTasks = async () => {
+    if (!user) return;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const { data } = await supabase
+      .from("user_tasks")
+      .select("id")
+      .eq("user_id", user.id)
+      .gte("completed_at", today.toISOString());
+    if (data) setCompletedToday(data.length);
+  };
+
+  const handleInviteFriend = () => {
+    hapticFeedback.impact("medium");
+    if (isTelegram && profile?.referral_code) {
+      const botUrl = `https://t.me/share/url?url=https://t.me/earnbot?start=${profile.referral_code}&text=Join%20CryptoMaine%20and%20earn%20crypto!%20🚀`;
+      openTelegramLink(botUrl);
+    } else if (profile?.referral_code) {
+      navigator.clipboard.writeText(`https://t.me/earnbot?start=${profile.referral_code}`);
+      toast.success("Referral link copied!");
+    }
+  };
+
   const streakDays = profile?.streak_days ?? 0;
   const totalStreakDays = 7;
-  const username = profile?.username ?? user?.email?.split("@")[0] ?? "User";
+  const username = profile?.username ?? tgUser?.first_name ?? user?.email?.split("@")[0] ?? "User";
   const level = profile?.level ?? 1;
   const xp = profile?.xp ?? 0;
+
+  const formatTimer = (secs: number) => {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
 
   const formatTime = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -60,11 +107,16 @@ const HomeScreen = () => {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">Welcome back</p>
-          <h1 className="text-xl font-display font-bold text-foreground">{username}</h1>
+          <h1 className="text-xl font-display font-bold text-foreground">
+            {tgUser?.first_name || username}
+            {tgUser?.is_premium && <span className="ml-1 text-warning">⭐</span>}
+          </h1>
         </div>
-        <div className="glass rounded-full px-3 py-1.5 flex items-center gap-1.5">
-          <Flame className="h-4 w-4 text-warning" />
-          <span className="text-sm font-semibold text-foreground">{streakDays}</span>
+        <div className="flex items-center gap-2">
+          <div className="glass rounded-full px-3 py-1.5 flex items-center gap-1.5">
+            <Flame className="h-4 w-4 text-warning" />
+            <span className="text-sm font-semibold text-foreground">{streakDays}</span>
+          </div>
         </div>
       </div>
 
@@ -86,6 +138,10 @@ const HomeScreen = () => {
           <div>
             <p className="text-[10px] text-white/50 uppercase tracking-wider">Level</p>
             <p className="text-sm font-semibold text-white">{level}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-white/50 uppercase tracking-wider">Today</p>
+            <p className="text-sm font-semibold text-white">{completedToday} tasks</p>
           </div>
         </div>
       </motion.div>
@@ -117,35 +173,46 @@ const HomeScreen = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-2">
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={() => setShowSpin(true)}
-          className="glass rounded-xl p-3 flex flex-col items-center gap-2 relative overflow-hidden"
+          onClick={() => { hapticFeedback.impact("light"); setShowSpin(true); }}
+          className="glass rounded-xl p-3 flex flex-col items-center gap-2"
         >
           <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center">
             <Star className="h-5 w-5 text-white" />
           </div>
-          <span className="text-[11px] font-medium text-foreground">Spin Wheel</span>
+          <span className="text-[10px] font-medium text-foreground">Spin</span>
         </motion.button>
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={() => setShowMystery(true)}
-          className="glass rounded-xl p-3 flex flex-col items-center gap-2 relative overflow-hidden"
+          onClick={() => { hapticFeedback.impact("light"); setShowMystery(true); }}
+          className="glass rounded-xl p-3 flex flex-col items-center gap-2"
         >
           <div className="w-10 h-10 gradient-warning rounded-xl flex items-center justify-center">
             <Box className="h-5 w-5 text-white" />
           </div>
-          <span className="text-[11px] font-medium text-foreground">Mystery Box</span>
+          <span className="text-[10px] font-medium text-foreground">Mystery</span>
         </motion.button>
         <motion.button
           whileTap={{ scale: 0.95 }}
-          className="glass rounded-xl p-3 flex flex-col items-center gap-2 relative overflow-hidden"
+          onClick={() => { hapticFeedback.impact("light"); setShowDaily(true); }}
+          className="glass rounded-xl p-3 flex flex-col items-center gap-2"
         >
           <div className="w-10 h-10 gradient-earn rounded-xl flex items-center justify-center">
-            <Gift className="h-5 w-5 text-white" />
+            <Calendar className="h-5 w-5 text-white" />
           </div>
-          <span className="text-[11px] font-medium text-foreground">Daily Bonus</span>
+          <span className="text-[10px] font-medium text-foreground">Daily</span>
+        </motion.button>
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={handleInviteFriend}
+          className="glass rounded-xl p-3 flex flex-col items-center gap-2"
+        >
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-accent/20">
+            <Send className="h-5 w-5 text-accent" />
+          </div>
+          <span className="text-[10px] font-medium text-foreground">Invite</span>
         </motion.button>
       </div>
 
@@ -162,12 +229,12 @@ const HomeScreen = () => {
           </div>
           <div className="flex items-center gap-1 text-xs text-warning">
             <Clock className="h-3 w-3" />
-            <span>02:34:12</span>
+            <span>{formatTimer(limitedOfferTimer)}</span>
           </div>
         </div>
         <p className="text-xs text-muted-foreground mt-1 mb-3">Complete 3 tasks & earn 2x rewards!</p>
-        <Progress value={33} className="h-1.5 bg-muted" />
-        <p className="text-[10px] text-muted-foreground mt-1">1/3 completed</p>
+        <Progress value={(completedToday / 3) * 100} className="h-1.5 bg-muted" />
+        <p className="text-[10px] text-muted-foreground mt-1">{Math.min(completedToday, 3)}/3 completed</p>
       </motion.div>
 
       {/* Milestone Progress */}
@@ -180,7 +247,7 @@ const HomeScreen = () => {
           <span className="text-xs gradient-text font-bold">Lv. {level}</span>
         </div>
         <Progress value={(xp % 1000) / 10} className="h-2 bg-muted" />
-        <p className="text-[10px] text-muted-foreground mt-1">{xp} / {(level) * 1000} XP to Level {level + 1}</p>
+        <p className="text-[10px] text-muted-foreground mt-1">{xp} / {level * 1000} XP to Level {level + 1}</p>
       </div>
 
       {/* Recent Activity */}
@@ -210,6 +277,7 @@ const HomeScreen = () => {
 
       <SpinWheel open={showSpin} onOpenChange={setShowSpin} />
       <MysteryBox open={showMystery} onOpenChange={setShowMystery} />
+      <DailyBonus open={showDaily} onOpenChange={setShowDaily} />
     </div>
   );
 };
