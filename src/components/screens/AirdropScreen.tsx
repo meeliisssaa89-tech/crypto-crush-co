@@ -1,19 +1,109 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Gift, Clock, Trophy, ChevronRight, Coins, Target, TrendingUp } from "lucide-react";
+import { Gift, Clock, Trophy, ChevronRight, Coins, Target, TrendingUp, Loader2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-
-const leaderboard = [
-  { rank: 1, name: "whale_user", tokens: 125000, avatar: "🐋" },
-  { rank: 2, name: "crypto_king", tokens: 98500, avatar: "👑" },
-  { rank: 3, name: "diamond_h", tokens: 87200, avatar: "💎" },
-  { rank: 4, name: "moonshot", tokens: 65400, avatar: "🚀" },
-  { rank: 5, name: "hodler99", tokens: 54100, avatar: "💪" },
-];
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { hapticFeedback } from "@/hooks/useTelegram";
+import { toast } from "sonner";
 
 const AirdropScreen = () => {
-  const totalTokens = 45200;
-  const claimableTokens = 12000;
-  const nextDistribution = "2d 14h 32m";
+  const { user } = useAuth();
+  const [airdrop, setAirdrop] = useState<any>(null);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [userRank, setUserRank] = useState<number | null>(null);
+  const [claiming, setClaiming] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
+
+  const fetchData = async () => {
+    if (!user) return;
+    setLoading(true);
+
+    // Fetch or create airdrop record
+    let { data: ad } = await supabase.from("airdrops").select("*").eq("user_id", user.id).single();
+    if (!ad) {
+      // Calculate from transactions
+      const { data: txs } = await supabase.from("transactions").select("amount").eq("user_id", user.id).gt("amount", 0);
+      const totalEarned = txs?.reduce((s, t) => s + Number(t.amount), 0) ?? 0;
+      const tokensEarned = Math.floor(totalEarned * 0.5);
+
+      const { data: newAd } = await supabase.from("airdrops").insert({
+        user_id: user.id,
+        tokens_earned: tokensEarned,
+        tokens_claimed: 0,
+        tokens_locked: Math.floor(tokensEarned * 0.7),
+      }).select().single();
+      ad = newAd;
+    }
+    if (ad) setAirdrop(ad);
+
+    // Leaderboard from profiles
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("username, xp, user_id")
+      .order("xp", { ascending: false })
+      .limit(5);
+    if (profiles) {
+      setLeaderboard(profiles.map((p, i) => ({
+        rank: i + 1,
+        name: p.username || "anon",
+        tokens: p.xp * 5,
+        avatar: ["🐋", "👑", "💎", "🚀", "💪"][i] || "🎯",
+      })));
+      const myIndex = profiles.findIndex(p => p.user_id === user.id);
+      setUserRank(myIndex >= 0 ? myIndex + 1 : null);
+    }
+
+    setLoading(false);
+  };
+
+  const claimTokens = async () => {
+    if (!user || !airdrop || claiming) return;
+    const claimable = airdrop.tokens_earned - airdrop.tokens_locked - airdrop.tokens_claimed;
+    if (claimable <= 0) {
+      toast.error("No tokens available to claim");
+      return;
+    }
+
+    setClaiming(true);
+    hapticFeedback.impact("heavy");
+
+    await supabase.from("airdrops").update({
+      tokens_claimed: airdrop.tokens_claimed + claimable,
+      last_claim_at: new Date().toISOString(),
+    }).eq("id", airdrop.id);
+
+    await supabase.from("transactions").insert({
+      user_id: user.id,
+      type: "airdrop_claim",
+      amount: claimable,
+      description: "Airdrop token claim",
+    });
+
+    hapticFeedback.notification("success");
+    toast.success(`Claimed ${claimable.toLocaleString()} tokens! 🎉`);
+    setClaiming(false);
+    fetchData();
+  };
+
+  const totalTokens = airdrop?.tokens_earned ?? 0;
+  const claimedTokens = airdrop?.tokens_claimed ?? 0;
+  const lockedTokens = airdrop?.tokens_locked ?? 0;
+  const claimableTokens = Math.max(0, totalTokens - lockedTokens - claimedTokens);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 pt-6 pb-4 space-y-5">
@@ -38,8 +128,12 @@ const AirdropScreen = () => {
             <p className="text-sm font-semibold text-white">{claimableTokens.toLocaleString()}</p>
           </div>
           <div>
+            <p className="text-[10px] text-white/50 uppercase tracking-wider">Claimed</p>
+            <p className="text-sm font-semibold text-white">{claimedTokens.toLocaleString()}</p>
+          </div>
+          <div>
             <p className="text-[10px] text-white/50 uppercase tracking-wider">Locked</p>
-            <p className="text-sm font-semibold text-white">{(totalTokens - claimableTokens).toLocaleString()}</p>
+            <p className="text-sm font-semibold text-white">{lockedTokens.toLocaleString()}</p>
           </div>
         </div>
       </motion.div>
@@ -47,16 +141,20 @@ const AirdropScreen = () => {
       {/* Claim Button */}
       <motion.button
         whileTap={{ scale: 0.97 }}
-        className="w-full gradient-primary rounded-xl p-4 flex items-center justify-between animate-pulse-glow"
+        onClick={claimTokens}
+        disabled={claiming || claimableTokens <= 0}
+        className="w-full gradient-primary rounded-xl p-4 flex items-center justify-between animate-pulse-glow disabled:opacity-50"
       >
         <div className="text-left">
-          <p className="text-sm font-bold text-white">Claim {claimableTokens.toLocaleString()} Tokens</p>
+          <p className="text-sm font-bold text-white">
+            {claiming ? "Claiming..." : claimableTokens > 0 ? `Claim ${claimableTokens.toLocaleString()} Tokens` : "No tokens to claim"}
+          </p>
           <div className="flex items-center gap-1 mt-0.5">
             <Clock className="h-3 w-3 text-white/60" />
-            <p className="text-[10px] text-white/60">Next drop: {nextDistribution}</p>
+            <p className="text-[10px] text-white/60">Earn more by completing tasks</p>
           </div>
         </div>
-        <Gift className="h-6 w-6 text-white" />
+        {claiming ? <Loader2 className="h-6 w-6 text-white animate-spin" /> : <Gift className="h-6 w-6 text-white" />}
       </motion.button>
 
       {/* Activity Breakdown */}
@@ -67,10 +165,10 @@ const AirdropScreen = () => {
         </h3>
         <div className="space-y-3">
           {[
-            { label: "Task Completion", value: 40, tokens: 18080 },
-            { label: "Referral Bonus", value: 25, tokens: 11300 },
-            { label: "Daily Activity", value: 20, tokens: 9040 },
-            { label: "Special Events", value: 15, tokens: 6780 },
+            { label: "Task Completion", value: 40, tokens: Math.floor(totalTokens * 0.4) },
+            { label: "Referral Bonus", value: 25, tokens: Math.floor(totalTokens * 0.25) },
+            { label: "Daily Activity", value: 20, tokens: Math.floor(totalTokens * 0.2) },
+            { label: "Special Events", value: 15, tokens: Math.floor(totalTokens * 0.15) },
           ].map((item) => (
             <div key={item.label}>
               <div className="flex items-center justify-between mb-1">
@@ -90,22 +188,19 @@ const AirdropScreen = () => {
             <Trophy className="h-4 w-4 text-warning" />
             Leaderboard
           </h3>
-          <button className="text-xs text-primary flex items-center gap-0.5">
-            View all <ChevronRight className="h-3 w-3" />
-          </button>
         </div>
         <div className="space-y-2">
-          {leaderboard.map((user) => (
-            <div key={user.rank} className="glass rounded-lg p-3 flex items-center gap-3">
+          {leaderboard.map((u) => (
+            <div key={u.rank} className="glass rounded-lg p-3 flex items-center gap-3">
               <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                user.rank <= 3 ? 'gradient-primary text-white' : 'bg-muted text-muted-foreground'
+                u.rank <= 3 ? 'gradient-primary text-white' : 'bg-muted text-muted-foreground'
               }`}>
-                {user.rank}
+                {u.rank}
               </span>
-              <span className="text-lg">{user.avatar}</span>
-              <span className="flex-1 text-sm font-medium text-foreground">{user.name}</span>
+              <span className="text-lg">{u.avatar}</span>
+              <span className="flex-1 text-sm font-medium text-foreground">{u.name}</span>
               <div className="text-right">
-                <p className="text-xs font-semibold text-earn">{user.tokens.toLocaleString()}</p>
+                <p className="text-xs font-semibold text-earn">{u.tokens.toLocaleString()}</p>
                 <p className="text-[9px] text-muted-foreground">tokens</p>
               </div>
             </div>
@@ -118,8 +213,8 @@ const AirdropScreen = () => {
         <div className="flex items-center gap-3">
           <TrendingUp className="h-5 w-5 text-primary" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-foreground">Your Rank: #128</p>
-            <p className="text-[10px] text-muted-foreground">Top 5% of all earners</p>
+            <p className="text-sm font-semibold text-foreground">Your Rank: #{userRank ?? "—"}</p>
+            <p className="text-[10px] text-muted-foreground">{totalTokens.toLocaleString()} tokens earned</p>
           </div>
           <span className="text-sm font-bold gradient-text">{totalTokens.toLocaleString()}</span>
         </div>

@@ -1,61 +1,180 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Users, ListChecks, ArrowDownUp, BarChart3, Settings, Shield,
   Search, Ban, Edit3, Check, X, DollarSign, TrendingUp, Activity,
-  Coins, Globe, Bell, ChevronRight, Plus, Trash2, Eye
+  Coins, Globe, Bell, ChevronRight, Plus, Trash2, Eye, Loader2, Send, MessageSquare
 } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-
-// --- Mock data ---
-const mockUsers = [
-  { id: "u1", name: "whale_user", email: "whale@test.com", balance: 125000, level: 24, status: "active", joined: "Jan 12" },
-  { id: "u2", name: "crypto_king", email: "king@test.com", balance: 98500, level: 18, status: "active", joined: "Feb 3" },
-  { id: "u3", name: "bot_suspect", email: "bot@test.com", balance: 5000, level: 2, status: "banned", joined: "Mar 1" },
-  { id: "u4", name: "diamond_h", email: "diamond@test.com", balance: 87200, level: 22, status: "active", joined: "Jan 20" },
-  { id: "u5", name: "newuser99", email: "new@test.com", balance: 150, level: 1, status: "active", joined: "Mar 5" },
-];
-
-const mockTasks = [
-  { id: "t1", title: "Join Telegram Channel", reward: 50, type: "Social", status: "active", completions: 1240 },
-  { id: "t2", title: "Install App - GameX", reward: 200, type: "Install", status: "active", completions: 430 },
-  { id: "t3", title: "Complete Survey #12", reward: 150, type: "Survey", status: "paused", completions: 89 },
-  { id: "t4", title: "Daily Check-in", reward: 30, type: "Daily", status: "active", completions: 5600 },
-];
-
-const mockWithdrawals = [
-  { id: "w1", user: "whale_user", amount: 5000, method: "USDT", status: "pending", date: "Mar 5" },
-  { id: "w2", user: "crypto_king", amount: 2000, method: "Crypto", status: "pending", date: "Mar 4" },
-  { id: "w3", user: "diamond_h", amount: 1500, method: "Binance ID", status: "approved", date: "Mar 3" },
-  { id: "w4", user: "moonshot", amount: 800, method: "USDT", status: "rejected", date: "Mar 2" },
-];
-
-const statsCards = [
-  { label: "Total Users", value: "12,458", change: "+124 today", icon: Users, color: "text-primary" },
-  { label: "Revenue", value: "$4,820", change: "+$340 today", icon: DollarSign, color: "text-earn" },
-  { label: "Active Tasks", value: "24", change: "3 new", icon: ListChecks, color: "text-accent" },
-  { label: "Pending Withdrawals", value: "18", change: "$12,400", icon: ArrowDownUp, color: "text-warning" },
-];
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const AdminDashboard = () => {
+  const { user } = useAuth();
   const [activeSection, setActiveSection] = useState("overview");
   const [searchQuery, setSearchQuery] = useState("");
-  const [editTaskModal, setEditTaskModal] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Data states
+  const [users, setUsers] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [settings, setSettings] = useState<Record<string, any>>({});
+  const [stats, setStats] = useState({ totalUsers: 0, totalTasks: 0, pendingWithdrawals: 0, totalTransactions: 0 });
+
+  // Modals
+  const [editTaskModal, setEditTaskModal] = useState<any>(null);
+  const [createTaskModal, setCreateTaskModal] = useState(false);
+  const [broadcastModal, setBroadcastModal] = useState(false);
+  const [broadcastMessage, setBroadcastMessage] = useState("");
   const [maintenanceMode, setMaintenanceMode] = useState(false);
+
+  // New task form
+  const [newTask, setNewTask] = useState({ title: "", reward_amount: 50, type: "social", url: "", description: "" });
+
+  useEffect(() => {
+    fetchAllData();
+  }, []);
+
+  const fetchAllData = async () => {
+    setLoading(true);
+    await Promise.all([fetchUsers(), fetchTasks(), fetchWithdrawals(), fetchSettings(), fetchStats()]);
+    setLoading(false);
+  };
+
+  const fetchUsers = async () => {
+    const { data } = await supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(50);
+    if (data) setUsers(data);
+  };
+
+  const fetchTasks = async () => {
+    const { data } = await supabase.from("tasks").select("*").order("created_at", { ascending: false });
+    if (data) setTasks(data);
+  };
+
+  const fetchWithdrawals = async () => {
+    const { data } = await supabase.from("withdrawal_requests").select("*").order("created_at", { ascending: false }).limit(50);
+    if (data) setWithdrawals(data);
+  };
+
+  const fetchSettings = async () => {
+    const { data } = await supabase.from("app_settings").select("*");
+    if (data) {
+      const s: Record<string, any> = {};
+      data.forEach(item => { s[item.key] = item.value; });
+      setSettings(s);
+      setMaintenanceMode(s.maintenance_mode === true);
+    }
+  };
+
+  const fetchStats = async () => {
+    const [{ count: uc }, { count: tc }, { count: wc }] = await Promise.all([
+      supabase.from("profiles").select("id", { count: "exact", head: true }),
+      supabase.from("tasks").select("id", { count: "exact", head: true }),
+      supabase.from("withdrawal_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    ]);
+    setStats({
+      totalUsers: uc ?? 0,
+      totalTasks: tc ?? 0,
+      pendingWithdrawals: wc ?? 0,
+      totalTransactions: 0,
+    });
+  };
+
+  // Task CRUD
+  const createTask = async () => {
+    if (!newTask.title.trim()) { toast.error("Title required"); return; }
+    const { error } = await supabase.from("tasks").insert({
+      title: newTask.title,
+      reward_amount: newTask.reward_amount,
+      type: newTask.type,
+      url: newTask.url || null,
+      description: newTask.description || null,
+      status: "active",
+    });
+    if (error) { toast.error(error.message); return; }
+    toast.success("Task created!");
+    setCreateTaskModal(false);
+    setNewTask({ title: "", reward_amount: 50, type: "social", url: "", description: "" });
+    fetchTasks();
+  };
+
+  const updateTask = async (taskId: string, updates: any) => {
+    const { error } = await supabase.from("tasks").update(updates).eq("id", taskId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Task updated!");
+    setEditTaskModal(null);
+    fetchTasks();
+  };
+
+  const deleteTask = async (taskId: string) => {
+    const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Task deleted!");
+    fetchTasks();
+  };
+
+  // Withdrawal actions
+  const processWithdrawal = async (id: string, status: "approved" | "rejected", note?: string) => {
+    const { error } = await supabase.from("withdrawal_requests").update({
+      status,
+      admin_note: note || null,
+      processed_at: new Date().toISOString(),
+    }).eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Withdrawal ${status}!`);
+    fetchWithdrawals();
+  };
+
+  // Settings
+  const saveSetting = async (key: string, value: any) => {
+    const { error } = await supabase.from("app_settings").upsert({ key, value }, { onConflict: "key" });
+    if (error) toast.error(error.message);
+    else toast.success("Setting saved!");
+    fetchSettings();
+  };
+
+  // Broadcast message
+  const sendBroadcast = async () => {
+    if (!broadcastMessage.trim()) { toast.error("Message required"); return; }
+    try {
+      const { error } = await supabase.functions.invoke("send-telegram-message", {
+        body: { message: broadcastMessage, broadcast: true },
+      });
+      if (error) throw error;
+      toast.success("Broadcast sent!");
+      setBroadcastModal(false);
+      setBroadcastMessage("");
+    } catch {
+      toast.error("Failed to send broadcast. Make sure the bot is configured.");
+    }
+  };
 
   const sections = [
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "users", label: "Users", icon: Users },
     { id: "tasks", label: "Tasks", icon: ListChecks },
     { id: "withdrawals", label: "Withdrawals", icon: ArrowDownUp },
+    { id: "broadcast", label: "Broadcast", icon: MessageSquare },
     { id: "settings", label: "Settings", icon: Settings },
   ];
+
+  const pendingWithdrawals = withdrawals.filter(w => w.status === "pending");
+  const pendingTotal = pendingWithdrawals.reduce((s, w) => s + Number(w.amount), 0);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -76,9 +195,7 @@ const AdminDashboard = () => {
               key={s.id}
               onClick={() => setActiveSection(s.id)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                activeSection === s.id
-                  ? "gradient-primary text-white"
-                  : "glass text-muted-foreground hover:text-foreground"
+                activeSection === s.id ? "gradient-primary text-white" : "glass text-muted-foreground hover:text-foreground"
               }`}
             >
               <s.icon className="h-3.5 w-3.5" />
@@ -93,61 +210,20 @@ const AdminDashboard = () => {
         {activeSection === "overview" && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              {statsCards.map((stat) => (
+              {[
+                { label: "Total Users", value: stats.totalUsers.toLocaleString(), icon: Users, color: "text-primary" },
+                { label: "Active Tasks", value: stats.totalTasks.toString(), icon: ListChecks, color: "text-earn" },
+                { label: "Pending Withdrawals", value: stats.pendingWithdrawals.toString(), icon: ArrowDownUp, color: "text-warning" },
+                { label: "Pending Total", value: `$${pendingTotal.toFixed(0)}`, icon: DollarSign, color: "text-accent" },
+              ].map((stat) => (
                 <div key={stat.label} className="glass rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <stat.icon className={`h-4 w-4 ${stat.color}`} />
                     <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{stat.label}</span>
                   </div>
                   <p className="text-xl font-display font-bold text-foreground">{stat.value}</p>
-                  <p className="text-[10px] text-earn mt-0.5">{stat.change}</p>
                 </div>
               ))}
-            </div>
-
-            {/* Revenue Chart Placeholder */}
-            <div className="glass rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-earn" />
-                Revenue (7 days)
-              </h3>
-              <div className="h-32 flex items-end gap-1">
-                {[40, 65, 45, 80, 55, 90, 70].map((h, i) => (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                    <div
-                      className="w-full rounded-t-md gradient-primary opacity-80"
-                      style={{ height: `${h}%` }}
-                    />
-                    <span className="text-[8px] text-muted-foreground">
-                      {["M", "T", "W", "T", "F", "S", "S"][i]}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Activity Log */}
-            <div className="glass rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                <Activity className="h-4 w-4 text-primary" />
-                Recent Activity
-              </h3>
-              <div className="space-y-2">
-                {[
-                  { text: "whale_user withdrew 5000 EARN", time: "2m ago", type: "withdraw" },
-                  { text: "New user registered: newuser99", time: "5m ago", type: "user" },
-                  { text: "Task 'Join Channel' completed 50 times", time: "12m ago", type: "task" },
-                  { text: "bot_suspect flagged by anti-fraud", time: "30m ago", type: "alert" },
-                ].map((log, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs">
-                    <div className={`w-1.5 h-1.5 rounded-full ${
-                      log.type === "alert" ? "bg-destructive" : log.type === "withdraw" ? "bg-warning" : "bg-earn"
-                    }`} />
-                    <span className="text-foreground flex-1">{log.text}</span>
-                    <span className="text-muted-foreground">{log.time}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         )}
@@ -155,37 +231,23 @@ const AdminDashboard = () => {
         {/* USERS */}
         {activeSection === "users" && (
           <div className="space-y-3">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search users..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 bg-secondary/50"
-                />
-              </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Search users..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 bg-secondary/50" />
             </div>
-            {mockUsers
-              .filter((u) => u.name.toLowerCase().includes(searchQuery.toLowerCase()))
-              .map((user) => (
-                <div key={user.id} className="glass rounded-xl p-3.5 flex items-center gap-3">
+            {users
+              .filter((u) => (u.username || "").toLowerCase().includes(searchQuery.toLowerCase()))
+              .map((u) => (
+                <div key={u.id} className="glass rounded-xl p-3.5 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center text-white font-bold text-sm">
-                    {user.name[0].toUpperCase()}
+                    {(u.username || "?")[0].toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-foreground truncate">{user.name}</p>
-                      <Badge className={`text-[9px] px-1.5 py-0 h-4 border-0 ${
-                        user.status === "active" ? "bg-earn/20 text-earn" : "bg-destructive/20 text-destructive"
-                      }`}>{user.status}</Badge>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">{user.email} • Lv.{user.level} • {user.joined}</p>
+                    <p className="text-sm font-semibold text-foreground truncate">{u.username || "anonymous"}</p>
+                    <p className="text-[10px] text-muted-foreground">Lv.{u.level} • {u.xp} XP • {new Date(u.created_at).toLocaleDateString()}</p>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <p className="text-xs font-semibold text-foreground">{user.balance.toLocaleString()}</p>
-                    <button className="p-1.5 rounded-lg hover:bg-secondary/50 text-muted-foreground"><Edit3 className="h-3.5 w-3.5" /></button>
-                    <button className="p-1.5 rounded-lg hover:bg-secondary/50 text-muted-foreground"><Ban className="h-3.5 w-3.5" /></button>
+                    <span className="text-xs font-semibold text-foreground">{u.streak_days}🔥</span>
                   </div>
                 </div>
               ))}
@@ -195,10 +257,10 @@ const AdminDashboard = () => {
         {/* TASKS */}
         {activeSection === "tasks" && (
           <div className="space-y-3">
-            <Button className="w-full gradient-primary text-white border-0 gap-2">
+            <Button onClick={() => setCreateTaskModal(true)} className="w-full gradient-primary text-white border-0 gap-2">
               <Plus className="h-4 w-4" /> Create New Task
             </Button>
-            {mockTasks.map((task) => (
+            {tasks.map((task) => (
               <div key={task.id} className="glass rounded-xl p-3.5">
                 <div className="flex items-center gap-3">
                   <div className="flex-1 min-w-0">
@@ -210,17 +272,47 @@ const AdminDashboard = () => {
                     </div>
                     <div className="flex items-center gap-3 mt-1">
                       <span className="text-[10px] text-muted-foreground">{task.type}</span>
-                      <span className="text-[10px] text-earn">+{task.reward} coins</span>
-                      <span className="text-[10px] text-muted-foreground">{task.completions} completions</span>
+                      <span className="text-[10px] text-earn">+{task.reward_amount} coins</span>
+                      <span className="text-[10px] text-muted-foreground">{task.current_completions} done</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <button onClick={() => setEditTaskModal(task.id)} className="p-1.5 rounded-lg hover:bg-secondary/50 text-muted-foreground"><Edit3 className="h-3.5 w-3.5" /></button>
-                    <button className="p-1.5 rounded-lg hover:bg-secondary/50 text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => setEditTaskModal(task)} className="p-1.5 rounded-lg hover:bg-secondary/50 text-muted-foreground"><Edit3 className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => deleteTask(task.id)} className="p-1.5 rounded-lg hover:bg-secondary/50 text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
                 </div>
               </div>
             ))}
+
+            {/* Create Task Modal */}
+            <Dialog open={createTaskModal} onOpenChange={setCreateTaskModal}>
+              <DialogContent className="glass border-border max-w-[400px]">
+                <DialogHeader>
+                  <DialogTitle className="text-foreground font-display">Create Task</DialogTitle>
+                  <DialogDescription className="text-muted-foreground">Add a new task for users</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <Input placeholder="Task title" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} className="bg-secondary/50" />
+                  <Input placeholder="Description" value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} className="bg-secondary/50" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input type="number" placeholder="Reward" value={newTask.reward_amount} onChange={(e) => setNewTask({ ...newTask, reward_amount: Number(e.target.value) })} className="bg-secondary/50" />
+                    <select
+                      value={newTask.type}
+                      onChange={(e) => setNewTask({ ...newTask, type: e.target.value })}
+                      className="bg-secondary/50 border border-border rounded-md px-3 text-sm text-foreground"
+                    >
+                      <option value="social">Social</option>
+                      <option value="install">Install</option>
+                      <option value="survey">Survey</option>
+                      <option value="daily">Daily</option>
+                      <option value="referral">Referral</option>
+                    </select>
+                  </div>
+                  <Input placeholder="URL (optional)" value={newTask.url} onChange={(e) => setNewTask({ ...newTask, url: e.target.value })} className="bg-secondary/50" />
+                  <Button onClick={createTask} className="w-full gradient-primary text-white border-0">Create Task</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
 
             {/* Edit Task Modal */}
             <Dialog open={!!editTaskModal} onOpenChange={() => setEditTaskModal(null)}>
@@ -229,23 +321,29 @@ const AdminDashboard = () => {
                   <DialogTitle className="text-foreground font-display">Edit Task</DialogTitle>
                   <DialogDescription className="text-muted-foreground">Modify task settings</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Title</label>
-                    <Input defaultValue={mockTasks.find((t) => t.id === editTaskModal)?.title} className="bg-secondary/50" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Reward</label>
-                      <Input type="number" defaultValue={mockTasks.find((t) => t.id === editTaskModal)?.reward} className="bg-secondary/50" />
+                {editTaskModal && (
+                  <div className="space-y-3">
+                    <Input defaultValue={editTaskModal.title} id="edit-title" className="bg-secondary/50" />
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input type="number" defaultValue={editTaskModal.reward_amount} id="edit-reward" className="bg-secondary/50" />
+                      <select defaultValue={editTaskModal.status} id="edit-status" className="bg-secondary/50 border border-border rounded-md px-3 text-sm text-foreground">
+                        <option value="active">Active</option>
+                        <option value="paused">Paused</option>
+                      </select>
                     </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Type</label>
-                      <Input defaultValue={mockTasks.find((t) => t.id === editTaskModal)?.type} className="bg-secondary/50" />
-                    </div>
+                    <Button
+                      onClick={() => {
+                        const title = (document.getElementById("edit-title") as HTMLInputElement)?.value;
+                        const reward = Number((document.getElementById("edit-reward") as HTMLInputElement)?.value);
+                        const status = (document.getElementById("edit-status") as HTMLSelectElement)?.value;
+                        updateTask(editTaskModal.id, { title, reward_amount: reward, status });
+                      }}
+                      className="w-full gradient-primary text-white border-0"
+                    >
+                      Save Changes
+                    </Button>
                   </div>
-                  <Button className="w-full gradient-primary text-white border-0">Save Changes</Button>
-                </div>
+                )}
               </DialogContent>
             </Dialog>
           </div>
@@ -257,23 +355,23 @@ const AdminDashboard = () => {
             <div className="glass rounded-xl p-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Pending total</span>
-                <span className="font-bold text-warning">$7,000</span>
+                <span className="font-bold text-warning">{pendingTotal.toLocaleString()} EARN</span>
               </div>
             </div>
-            {mockWithdrawals.map((w) => (
+            {withdrawals.map((w) => (
               <div key={w.id} className="glass rounded-xl p-3.5 flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground">{w.user}</p>
+                  <p className="text-sm font-semibold text-foreground">{Number(w.amount).toLocaleString()} EARN</p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-foreground">{w.amount} EARN</span>
                     <span className="text-[10px] text-muted-foreground">via {w.method}</span>
-                    <span className="text-[10px] text-muted-foreground">{w.date}</span>
+                    <span className="text-[10px] text-muted-foreground">{new Date(w.created_at).toLocaleDateString()}</span>
+                    {w.wallet_address && <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">{w.wallet_address}</span>}
                   </div>
                 </div>
                 {w.status === "pending" ? (
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <button className="p-1.5 rounded-lg bg-earn/20 text-earn hover:bg-earn/30"><Check className="h-4 w-4" /></button>
-                    <button className="p-1.5 rounded-lg bg-destructive/20 text-destructive hover:bg-destructive/30"><X className="h-4 w-4" /></button>
+                    <button onClick={() => processWithdrawal(w.id, "approved")} className="p-1.5 rounded-lg bg-earn/20 text-earn hover:bg-earn/30"><Check className="h-4 w-4" /></button>
+                    <button onClick={() => processWithdrawal(w.id, "rejected", "Declined by admin")} className="p-1.5 rounded-lg bg-destructive/20 text-destructive hover:bg-destructive/30"><X className="h-4 w-4" /></button>
                   </div>
                 ) : (
                   <Badge className={`text-[9px] px-2 py-0.5 h-5 border-0 ${
@@ -285,10 +383,33 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {/* BROADCAST */}
+        {activeSection === "broadcast" && (
+          <div className="space-y-4">
+            <div className="glass rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-primary" />
+                Send Broadcast Message
+              </h3>
+              <p className="text-xs text-muted-foreground mb-3">
+                Send a message to all users via Telegram bot. Requires bot token configuration.
+              </p>
+              <Textarea
+                placeholder="Type your broadcast message..."
+                value={broadcastMessage}
+                onChange={(e) => setBroadcastMessage(e.target.value)}
+                className="bg-secondary/50 min-h-[100px] mb-3"
+              />
+              <Button onClick={sendBroadcast} className="w-full gradient-primary text-white border-0 gap-2">
+                <Send className="h-4 w-4" /> Send to All Users
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* SETTINGS */}
         {activeSection === "settings" && (
           <div className="space-y-4">
-            {/* Token Control */}
             <div className="glass rounded-xl p-4">
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                 <Coins className="h-4 w-4 text-primary" />
@@ -300,17 +421,12 @@ const AdminDashboard = () => {
                   <Input defaultValue="0.10" className="w-24 h-8 text-xs bg-secondary/50 text-right" />
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Total Supply</span>
-                  <Input defaultValue="10000000" className="w-32 h-8 text-xs bg-secondary/50 text-right" />
-                </div>
-                <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Coins → Points Rate</span>
                   <Input defaultValue="1:2" className="w-20 h-8 text-xs bg-secondary/50 text-right" />
                 </div>
               </div>
             </div>
 
-            {/* Referral Settings */}
             <div className="glass rounded-xl p-4">
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                 <Users className="h-4 w-4 text-earn" />
@@ -333,25 +449,6 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            {/* Ad Management */}
-            <div className="glass rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                <Globe className="h-4 w-4 text-accent" />
-                Ad Network Codes
-              </h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-[10px] text-muted-foreground mb-1 block">Monetag Script</label>
-                  <Input placeholder="Paste Monetag ad code..." className="bg-secondary/50 text-xs" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-muted-foreground mb-1 block">Adsterra Script</label>
-                  <Input placeholder="Paste Adsterra ad code..." className="bg-secondary/50 text-xs" />
-                </div>
-              </div>
-            </div>
-
-            {/* System */}
             <div className="glass rounded-xl p-4">
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                 <Settings className="h-4 w-4 text-muted-foreground" />
@@ -363,7 +460,13 @@ const AdminDashboard = () => {
                     <p className="text-xs text-foreground">Maintenance Mode</p>
                     <p className="text-[10px] text-muted-foreground">Disable all user access</p>
                   </div>
-                  <Switch checked={maintenanceMode} onCheckedChange={setMaintenanceMode} />
+                  <Switch
+                    checked={maintenanceMode}
+                    onCheckedChange={(v) => {
+                      setMaintenanceMode(v);
+                      saveSetting("maintenance_mode", v);
+                    }}
+                  />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
@@ -374,8 +477,6 @@ const AdminDashboard = () => {
                 </div>
               </div>
             </div>
-
-            <Button className="w-full gradient-primary text-white border-0">Save All Settings</Button>
           </div>
         )}
       </div>
