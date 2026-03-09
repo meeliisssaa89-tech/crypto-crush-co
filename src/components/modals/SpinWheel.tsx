@@ -225,7 +225,7 @@ const SpinWheel = ({ open, onOpenChange }: SpinWheelProps) => {
                   ) : (
                     <span className="text-4xl block">{result.emoji}</span>
                   )}
-                  <p className="text-2xl font-display font-bold text-earn">+{result.value} coins!</p>
+                  <p className="text-2xl font-display font-bold text-earn">+{result.value} XP!</p>
                   <p className="text-xs text-muted-foreground">{result.label}</p>
                 </motion.div>
               )}
