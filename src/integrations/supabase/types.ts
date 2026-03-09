@@ -364,6 +364,7 @@ export type Database = {
       }
       tasks: {
         Row: {
+          cooldown_seconds: number
           created_at: string
           current_completions: number
           description: string | null
@@ -381,6 +382,7 @@ export type Database = {
           verification_type: string
         }
         Insert: {
+          cooldown_seconds?: number
           created_at?: string
           current_completions?: number
           description?: string | null
@@ -398,6 +400,7 @@ export type Database = {
           verification_type?: string
         }
         Update: {
+          cooldown_seconds?: number
           created_at?: string
           current_completions?: number
           description?: string | null

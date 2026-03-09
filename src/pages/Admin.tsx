@@ -4,9 +4,10 @@ import {
   Users, ListChecks, ArrowDownUp, BarChart3, Settings, Shield,
   Search, Ban, Edit3, Check, X, DollarSign, TrendingUp, Activity,
   Coins, Globe, Bell, ChevronRight, Plus, Trash2, Eye, Loader2, Send, MessageSquare,
-  Gamepad2
+  Gamepad2, Wallet
 } from "lucide-react";
 import GameSettings from "@/components/admin/GameSettings";
+import EarnSettings from "@/components/admin/EarnSettings";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -162,6 +163,7 @@ const AdminDashboard = () => {
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "users", label: "Users", icon: Users },
     { id: "tasks", label: "Tasks", icon: ListChecks },
+    { id: "earn", label: "Earn", icon: Wallet },
     { id: "games", label: "Games", icon: Gamepad2 },
     { id: "withdrawals", label: "Withdrawals", icon: ArrowDownUp },
     { id: "broadcast", label: "Broadcast", icon: MessageSquare },
@@ -351,6 +353,9 @@ const AdminDashboard = () => {
             </Dialog>
           </div>
         )}
+
+        {/* EARN */}
+        {activeSection === "earn" && <EarnSettings />}
 
         {/* GAMES */}
         {activeSection === "games" && <GameSettings />}
