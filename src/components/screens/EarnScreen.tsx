@@ -22,20 +22,6 @@ const statusColors: Record<string, string> = {
   completed: "bg-primary/20 text-primary",
 };
 
-const shortlinks = [
-  { id: 1, title: "Link #1 - Premium", reward: 15, timer: 10, network: "Monetag" },
-  { id: 2, title: "Link #2 - Standard", reward: 10, timer: 8, network: "Adsterra" },
-  { id: 3, title: "Link #3 - Basic", reward: 8, timer: 5, network: "Monetag" },
-  { id: 4, title: "Link #4 - Premium", reward: 20, timer: 15, network: "ShrinkMe" },
-  { id: 5, title: "Link #5 - Standard", reward: 12, timer: 10, network: "Adsterra" },
-];
-
-const ads = [
-  { id: 1, title: "Watch Video Ad", reward: 25, cooldown: "Ready", available: true },
-  { id: 2, title: "Rewarded Interstitial", reward: 15, cooldown: "Ready", available: true },
-  { id: 3, title: "Full Screen Ad", reward: 30, cooldown: "02:45", available: false },
-  { id: 4, title: "Short Clip Ad", reward: 10, cooldown: "Ready", available: true },
-];
 
 interface TaskRow {
   id: string;
