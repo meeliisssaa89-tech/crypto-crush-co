@@ -493,7 +493,7 @@ const EarnScreen = () => {
               <div className="glass rounded-2xl p-3">
                 <div className="flex justify-between items-center">
                   <span className="text-[10px] text-muted-foreground">Today's progress</span>
-                  <span className="text-xs font-bold text-earn">+{shortlinkEarnings} coins</span>
+                  <span className="text-xs font-bold text-earn">+{shortlinkEarnings} XP</span>
                 </div>
                 <Progress value={shortlinks.length > 0 ? (completedShortlinks.size / shortlinks.length) * 100 : 0} className="h-1.5 mt-2 bg-muted" />
               </div>
