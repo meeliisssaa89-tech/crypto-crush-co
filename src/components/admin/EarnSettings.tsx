@@ -643,6 +643,17 @@ const EarnSettings = () => {
               <Input placeholder="e.g. show_8914235" value={adForm.ad_zone_id} onChange={e => setAdForm({ ...adForm, ad_zone_id: e.target.value })} className="bg-secondary/50" />
               <p className="text-[10px] text-muted-foreground mt-1">The Monetag function name from your SDK</p>
             </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Reward Type</label>
+              <div className="flex gap-1.5">
+                {[{ value: "xp", label: "XP Only" }, { value: "xp_and_token", label: "XP + Token" }].map(rt => (
+                  <button key={rt.value} onClick={() => setAdForm({ ...adForm, reward_type: rt.value })}
+                    className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                      adForm.reward_type === rt.value ? "gradient-primary text-white" : "glass text-muted-foreground"
+                    }`}>{rt.label}</button>
+                ))}
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Type</label>
@@ -654,10 +665,16 @@ const EarnSettings = () => {
                 </select>
               </div>
               <div>
-                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Reward</label>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">XP Reward</label>
                 <Input type="number" value={adForm.reward_amount} onChange={e => setAdForm({ ...adForm, reward_amount: Number(e.target.value) })} className="bg-secondary/50" />
               </div>
             </div>
+            {adForm.reward_type === "xp_and_token" && (
+              <div>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Token Reward</label>
+                <Input type="number" value={adForm.token_reward_amount} onChange={e => setAdForm({ ...adForm, token_reward_amount: Number(e.target.value) })} className="bg-secondary/50" />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Cooldown (seconds)</label>
