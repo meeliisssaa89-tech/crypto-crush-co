@@ -31,7 +31,15 @@ const HomeScreen = () => {
       fetchActivity();
       fetchTodayTasks();
     }
+    fetchTickerConfig();
   }, [user]);
+
+  const fetchTickerConfig = async () => {
+    const { data } = await supabase.from("app_settings").select("*").eq("key", "ticker_config").single();
+    if (data?.value && typeof data.value === "object") {
+      setTickerConfig(prev => ({ ...prev, ...(data.value as any) }));
+    }
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
