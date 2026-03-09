@@ -143,7 +143,7 @@ const MysteryBox = ({ open, onOpenChange }: MysteryBoxProps) => {
         description: `Mystery Box: ${prize.rarity} - ${prize.label}`,
       });
 
-      await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: Math.floor(prize.value / 4) });
+      await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: Math.floor(prize.value) });
 
       setBoxesOpenedToday(prev => prev + 1);
       setOpening(false);
