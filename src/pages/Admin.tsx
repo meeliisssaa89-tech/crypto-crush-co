@@ -4,7 +4,7 @@ import {
   Users, ListChecks, ArrowDownUp, BarChart3, Settings, Shield,
   Search, Ban, Edit3, Check, X, DollarSign, TrendingUp, Activity,
   Coins, Globe, Bell, ChevronRight, Plus, Trash2, Eye, Loader2, Send, MessageSquare,
-  Gamepad2, Wallet
+  Gamepad2, Wallet, Rocket
 } from "lucide-react";
 import GameSettings from "@/components/admin/GameSettings";
 import EarnSettings from "@/components/admin/EarnSettings";
