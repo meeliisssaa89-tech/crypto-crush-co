@@ -192,6 +192,7 @@ const AdminDashboard = () => {
     { id: "users", label: "Users", icon: Users },
     { id: "tasks", label: "Tasks", icon: ListChecks },
     { id: "earn", label: "Earn", icon: Wallet },
+    { id: "referrals", label: "Referrals", icon: Link2 },
     { id: "airdrop", label: "Airdrop", icon: Rocket },
     { id: "ticker", label: "Ticker", icon: BarChart },
     { id: "wallet", label: "Wallet", icon: Coins },
