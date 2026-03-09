@@ -169,7 +169,7 @@ const DailyBonus = ({ open, onOpenChange }: DailyBonusProps) => {
     }));
 
     hapticFeedback.notification("success");
-    toast.success(`Day ${newStreak} bonus: +${reward} coins! 🎉`);
+    toast.success(`Day ${newStreak} bonus: +${reward} XP! 🎉`);
   };
 
   const currentDay = profile?.streak_days ?? 0;
