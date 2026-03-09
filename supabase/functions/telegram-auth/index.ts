@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
 
     const authDate = parseInt(data.auth_date || "0", 10);
     const now = Math.floor(Date.now() / 1000);
-    if (now - authDate > 300) {
+    if (now - authDate > 86400) {
       return new Response(
         JSON.stringify({ error: "initData expired" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
