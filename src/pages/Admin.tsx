@@ -167,6 +167,7 @@ const AdminDashboard = () => {
     { id: "tasks", label: "Tasks", icon: ListChecks },
     { id: "earn", label: "Earn", icon: Wallet },
     { id: "airdrop", label: "Airdrop", icon: Rocket },
+    { id: "ticker", label: "Ticker", icon: BarChart },
     { id: "games", label: "Games", icon: Gamepad2 },
     { id: "withdrawals", label: "Withdrawals", icon: ArrowDownUp },
     { id: "broadcast", label: "Broadcast", icon: MessageSquare },
