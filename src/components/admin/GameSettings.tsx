@@ -171,7 +171,7 @@ const GameSettings = () => {
     }
 
     const operation = existing
-      ? supabase.from("app_settings").update({ value }).eq("key", key)
+      ? supabase.from("app_settings").update({ value: value as any }).eq("key", key)
       : supabase.from("app_settings").insert({ key, value: value as any });
 
     const { error } = await operation;
