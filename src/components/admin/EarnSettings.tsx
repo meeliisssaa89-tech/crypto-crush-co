@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   ListChecks, Link2, Users, MessageSquare, Download, FileText, Play,
   Plus, Trash2, Edit3, Loader2, Clock, ExternalLink, Eye, EyeOff,
-  Megaphone, Globe, Timer, CheckCircle2,
+  Megaphone, Globe, Timer, CheckCircle2, BarChart3, TrendingUp, Coins,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -63,6 +63,11 @@ const EarnSettings = () => {
     ad_zone_id: "", ads_per_click: 1,
   });
 
+  // Ad stats
+  const [adStats, setAdStats] = useState<{ totalViews: number; totalRewards: number; todayViews: number; perAd: Record<string, { views: number; rewards: number }> }>({
+    totalViews: 0, totalRewards: 0, todayViews: 0, perAd: {},
+  });
+
   useEffect(() => { fetchAll(); }, []);
 
   const fetchAll = async () => {
@@ -75,7 +80,25 @@ const EarnSettings = () => {
     if (t.data) setTasks(t.data);
     if (s.data) setShortlinks(s.data);
     if (a.data) setAds(a.data);
+    await fetchAdStats();
     setLoading(false);
+  };
+
+  const fetchAdStats = async () => {
+    const { data } = await supabase.from("user_ad_views").select("ad_id, reward_amount, viewed_at");
+    if (!data) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const perAd: Record<string, { views: number; rewards: number }> = {};
+    let totalViews = 0, totalRewards = 0, todayViews = 0;
+    data.forEach((v: any) => {
+      totalViews++;
+      totalRewards += Number(v.reward_amount);
+      if (v.viewed_at?.slice(0, 10) === today) todayViews++;
+      if (!perAd[v.ad_id]) perAd[v.ad_id] = { views: 0, rewards: 0 };
+      perAd[v.ad_id].views++;
+      perAd[v.ad_id].rewards += Number(v.reward_amount);
+    });
+    setAdStats({ totalViews, totalRewards, todayViews, perAd });
   };
 
   // ─── TASK CRUD ───
@@ -360,6 +383,21 @@ const EarnSettings = () => {
       {/* ═══════════ ADS TAB ═══════════ */}
       {activeTab === "ads" && (
         <div className="space-y-3">
+          {/* Ad Statistics */}
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: "Total Views", value: adStats.totalViews.toLocaleString(), icon: BarChart3, color: "text-primary" },
+              { label: "Today", value: adStats.todayViews.toLocaleString(), icon: TrendingUp, color: "text-earn" },
+              { label: "Rewards Paid", value: adStats.totalRewards.toLocaleString(), icon: Coins, color: "text-warning" },
+            ].map((s) => (
+              <div key={s.label} className="glass rounded-xl p-3 text-center">
+                <s.icon className={`h-4 w-4 mx-auto mb-1 ${s.color}`} />
+                <p className="text-lg font-display font-bold text-foreground">{s.value}</p>
+                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{s.label}</p>
+              </div>
+            ))}
+          </div>
+
           <Button onClick={() => openAdModal()} className="w-full gradient-earn text-white border-0 gap-2">
             <Plus className="h-4 w-4" /> Add New Ad
           </Button>
@@ -377,11 +415,16 @@ const EarnSettings = () => {
                       {ad.is_active ? "active" : "paused"}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[10px] text-earn">+{ad.reward_amount}</span>
-                    <span className="text-[10px] text-accent flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" />{Math.floor(ad.cooldown_seconds / 60)}m cooldown</span>
-                    <span className="text-[10px] text-muted-foreground">{ad.ad_type}</span>
-                  </div>
+                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                     <span className="text-[10px] text-earn">+{ad.reward_amount}</span>
+                     <span className="text-[10px] text-accent flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" />{Math.floor(ad.cooldown_seconds / 60)}m</span>
+                     <span className="text-[10px] text-muted-foreground">{ad.ad_type}</span>
+                     {adStats.perAd[ad.id] && (
+                       <span className="text-[10px] text-primary flex items-center gap-0.5">
+                         <BarChart3 className="h-2.5 w-2.5" />{adStats.perAd[ad.id].views} views
+                       </span>
+                     )}
+                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button onClick={() => toggleAd(ad.id, ad.is_active)} className="p-1.5 rounded-lg hover:bg-secondary/50">
