@@ -245,6 +245,8 @@ const EarnSettings = () => {
       cooldown_seconds: Number(adForm.cooldown_seconds),
       ad_zone_id: adForm.ad_zone_id.trim() || null,
       ads_per_click: Number(adForm.ads_per_click) || 1,
+      reward_type: adForm.reward_type,
+      token_reward_amount: adForm.reward_type === "xp_and_token" ? Number(adForm.token_reward_amount) : 0,
     };
 
     if (isCreating || !adModal?.id) {
