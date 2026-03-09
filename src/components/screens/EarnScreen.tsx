@@ -258,18 +258,11 @@ const EarnScreen = () => {
     });
 
     // Add XP to profile
-    const { data: currentProfile } = await supabase.from("profiles").select("xp").eq("user_id", user.id).single();
-    const currentXp = currentProfile?.xp ?? 0;
-    await supabase.from("profiles").update({ xp: currentXp + link.reward_amount }).eq("user_id", user.id);
+    await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: link.reward_amount });
 
     // Add token if applicable
     if (link.reward_type === "xp_and_token" && link.token_reward_amount > 0) {
-      const { data: airdropRow } = await supabase.from("airdrops").select("tokens_earned").eq("user_id", user.id).single();
-      if (airdropRow) {
-        await supabase.from("airdrops").update({ tokens_earned: (airdropRow.tokens_earned ?? 0) + link.token_reward_amount }).eq("user_id", user.id);
-      } else {
-        await supabase.from("airdrops").insert({ user_id: user.id, tokens_earned: link.token_reward_amount });
-      }
+      await supabase.rpc("add_tokens", { p_user_id: user.id, p_amount: link.token_reward_amount });
     }
 
     await supabase.from("transactions").insert({
