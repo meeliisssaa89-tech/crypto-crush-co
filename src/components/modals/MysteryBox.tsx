@@ -143,7 +143,7 @@ const MysteryBox = ({ open, onOpenChange }: MysteryBoxProps) => {
         description: `Mystery Box: ${prize.rarity} - ${prize.label}`,
       });
 
-      await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: Math.floor(prize.value / 4) });
+      await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: Math.floor(prize.value) });
 
       setBoxesOpenedToday(prev => prev + 1);
       setOpening(false);
@@ -247,7 +247,7 @@ const MysteryBox = ({ open, onOpenChange }: MysteryBoxProps) => {
                     <p className={`text-sm font-bold uppercase tracking-wider ${rarityColors[result.rarity]}`}>
                       {result.rarity}
                     </p>
-                    <p className="text-2xl font-display font-bold text-earn">+{result.value} coins!</p>
+                    <p className="text-2xl font-display font-bold text-earn">+{result.value} XP!</p>
                     <p className="text-xs text-muted-foreground">{result.label}</p>
                   </motion.div>
                 )}
