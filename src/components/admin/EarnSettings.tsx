@@ -579,9 +579,20 @@ const EarnSettings = () => {
           <div className="space-y-3">
             <Input placeholder="Title" value={slForm.title} onChange={e => setSlForm({ ...slForm, title: e.target.value })} className="bg-secondary/50" />
             <Input placeholder="https://shortlink.com/abc" value={slForm.url} onChange={e => setSlForm({ ...slForm, url: e.target.value })} className="bg-secondary/50" />
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Reward Type</label>
+              <div className="flex gap-1.5">
+                {[{ value: "xp", label: "XP Only" }, { value: "xp_and_token", label: "XP + Token" }].map(rt => (
+                  <button key={rt.value} onClick={() => setSlForm({ ...slForm, reward_type: rt.value })}
+                    className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                      slForm.reward_type === rt.value ? "gradient-primary text-white" : "glass text-muted-foreground"
+                    }`}>{rt.label}</button>
+                ))}
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Reward</label>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">XP Reward</label>
                 <Input type="number" value={slForm.reward_amount} onChange={e => setSlForm({ ...slForm, reward_amount: Number(e.target.value) })} className="bg-secondary/50" />
               </div>
               <div>
@@ -589,6 +600,12 @@ const EarnSettings = () => {
                 <Input type="number" value={slForm.timer_seconds} onChange={e => setSlForm({ ...slForm, timer_seconds: Number(e.target.value) })} className="bg-secondary/50" />
               </div>
             </div>
+            {slForm.reward_type === "xp_and_token" && (
+              <div>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Token Reward</label>
+                <Input type="number" value={slForm.token_reward_amount} onChange={e => setSlForm({ ...slForm, token_reward_amount: Number(e.target.value) })} className="bg-secondary/50" />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Network</label>
