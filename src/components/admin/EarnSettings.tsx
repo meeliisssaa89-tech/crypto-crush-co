@@ -50,17 +50,20 @@ const EarnSettings = () => {
     title: "", description: "", reward_amount: 50, type: "social",
     url: "", is_daily: false, verification_type: "manual",
     cooldown_seconds: 0, is_limited: false, max_completions: 100,
+    reward_type: "xp", token_reward_amount: 0,
   });
 
   // Shortlink form
   const [slForm, setSlForm] = useState({
     title: "", url: "", reward_amount: 10, timer_seconds: 10, network: "direct", daily_limit: 0,
+    reward_type: "xp", token_reward_amount: 0,
   });
 
   // Ad form
   const [adForm, setAdForm] = useState({
     title: "", ad_type: "video", reward_amount: 5, cooldown_seconds: 300,
     ad_zone_id: "", ads_per_click: 1,
+    reward_type: "xp", token_reward_amount: 0,
   });
 
   // Ad stats
