@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
     // Log the broadcast activity
     const authHeader = req.headers.get("Authorization");
     if (authHeader) {
-      const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!, {
+      const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
         global: { headers: { Authorization: authHeader } },
       });
       const { data: { user } } = await userClient.auth.getUser();
