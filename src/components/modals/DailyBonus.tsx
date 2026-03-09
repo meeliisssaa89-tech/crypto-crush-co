@@ -62,7 +62,7 @@ const DailyBonus = ({ open, onOpenChange }: DailyBonusProps) => {
     if (!user) return;
 
     const [{ data: profileData, error: profileError }, { data: settingsData, error: settingsError }] = await Promise.all([
-      supabase.from("profiles").select("streak_days, last_streak_date, xp").eq("user_id", user.id).single(),
+      supabase.from("profiles").select("streak_days, last_streak_date, xp, referral_code").eq("user_id", user.id).maybeSingle(),
       supabase
         .from("app_settings")
         .select("key, value")

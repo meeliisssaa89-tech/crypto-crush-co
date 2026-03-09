@@ -130,7 +130,7 @@ const AirdropScreen = () => {
         setUserRank(myIndex + 1);
       } else {
         // Count how many have more XP than current user
-        const { data: myProfile } = await supabase.from("profiles").select("xp").eq("user_id", user.id).single();
+        const { data: myProfile } = await supabase.from("profiles").select("xp").eq("user_id", user.id).maybeSingle();
         if (myProfile) {
           const { count: above } = await supabase
             .from("profiles")
