@@ -322,7 +322,9 @@ const EarnSettings = () => {
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className="text-[10px] text-muted-foreground">{typeInfo.label}</span>
-                      <span className="text-[10px] text-earn">+{task.reward_amount}</span>
+                      <span className="text-[10px] text-earn">+{task.reward_amount} XP</span>
+                      {(task.reward_type === "xp_and_token") && <span className="text-[10px] text-primary">+{task.token_reward_amount} TKN</span>}
+                      <Badge className="text-[8px] px-1 py-0 h-3.5 border-0 bg-primary/10 text-primary">{task.reward_type === "xp_and_token" ? "XP+TKN" : "XP"}</Badge>
                       {task.cooldown_seconds > 0 && (
                         <span className="text-[10px] text-accent flex items-center gap-0.5">
                           <Clock className="h-2.5 w-2.5" />{task.cooldown_seconds}s
