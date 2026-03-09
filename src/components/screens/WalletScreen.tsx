@@ -241,7 +241,7 @@ const WalletScreen = () => {
 
             <div>
               <label className="text-[10px] text-muted-foreground mb-1 block">Amount (XP)</label>
-              <Input placeholder="Min 100 XP" type="number" value={withdrawAmount}
+              <Input placeholder={`Min ${tickerConfig.min_withdrawal_xp} XP`} type="number" value={withdrawAmount}
                 onChange={(e) => setWithdrawAmount(e.target.value)} className="bg-secondary/50" />
             </div>
 
