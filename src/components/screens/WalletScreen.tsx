@@ -131,6 +131,9 @@ const WalletScreen = () => {
         </div>
       </motion.div>
 
+      {/* TON Wallet */}
+      <TonWalletSection />
+
       {/* Token List */}
       <div>
         <h3 className="text-sm font-semibold text-foreground mb-3">Assets</h3>
