@@ -6,7 +6,7 @@ const phases = [
     title: "Phase 1 — Accumulation",
     desc: "Complete tasks, refer friends, and earn tokens through daily activity.",
     icon: Zap,
-    status: "active" as const,
+    status: "active" as "active" | "done" | "upcoming",
   },
   {
     title: "Phase 2 — Snapshot",
