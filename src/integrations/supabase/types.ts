@@ -781,6 +781,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_tokens: {
+        Args: { p_amount: number; p_user_id: string }
+        Returns: undefined
+      }
+      add_xp: {
+        Args: { p_amount: number; p_user_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
