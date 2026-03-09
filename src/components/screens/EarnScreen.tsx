@@ -228,7 +228,10 @@ const EarnScreen = () => {
     }
     
     hapticFeedback.notification("success");
-    toast.success(`+${task.reward_amount} coins earned!`);
+    const rewardMsg = task.reward_type === "xp_and_token" 
+      ? `+${task.reward_amount} XP & +${task.token_reward_amount} TKN earned!`
+      : `+${task.reward_amount} XP earned!`;
+    toast.success(rewardMsg);
     setCompleting(null);
     setCountdowns(prev => { const n = { ...prev }; delete n[`task_${task.id}`]; return n; });
   };
