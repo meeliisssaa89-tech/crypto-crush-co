@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   ListChecks, Link2, Users, MessageSquare, Download, FileText, Play,
   Plus, Trash2, Edit3, Loader2, Clock, ExternalLink, Eye, EyeOff,
-  Megaphone, Globe, Timer, CheckCircle2,
+  Megaphone, Globe, Timer, CheckCircle2, BarChart3, TrendingUp, Coins,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
