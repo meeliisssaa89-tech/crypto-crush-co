@@ -98,9 +98,10 @@ const WalletScreen = () => {
     setSubmitting(false);
   };
 
-  const feeAmount = parseFloat(withdrawAmount) ? parseFloat(withdrawAmount) * 0.02 : 0;
+  const feePercent = tickerConfig.withdrawal_fee_percent;
+  const feeAmount = parseFloat(withdrawAmount) ? parseFloat(withdrawAmount) * (feePercent / 100) : 0;
   const receiveAmount = parseFloat(withdrawAmount) ? parseFloat(withdrawAmount) - feeAmount : 0;
-  const receiveInTon = receiveAmount * tickerConfig.points_usd_rate; // simplified
+  const receiveInTon = receiveAmount * tickerConfig.xp_to_ton_rate;
 
   return (
     <div className="px-4 pt-6 pb-4 space-y-5">
