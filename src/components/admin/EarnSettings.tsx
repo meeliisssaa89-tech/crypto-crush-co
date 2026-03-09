@@ -176,10 +176,11 @@ const EarnSettings = () => {
       setSlForm({
         title: sl.title, url: sl.url, reward_amount: sl.reward_amount,
         timer_seconds: sl.timer_seconds, network: sl.network, daily_limit: sl.daily_limit || 0,
+        reward_type: sl.reward_type || "xp", token_reward_amount: sl.token_reward_amount || 0,
       });
       setShortlinkModal(sl);
     } else {
-      setSlForm({ title: "", url: "", reward_amount: 10, timer_seconds: 10, network: "direct", daily_limit: 0 });
+      setSlForm({ title: "", url: "", reward_amount: 10, timer_seconds: 10, network: "direct", daily_limit: 0, reward_type: "xp", token_reward_amount: 0 });
       setShortlinkModal({});
       setIsCreating(true);
     }
