@@ -354,6 +354,9 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {/* EARN */}
+        {activeSection === "earn" && <EarnSettings />}
+
         {/* GAMES */}
         {activeSection === "games" && <GameSettings />}
 
