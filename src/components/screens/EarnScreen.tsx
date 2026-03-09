@@ -541,7 +541,10 @@ const EarnScreen = () => {
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-sm font-bold text-earn">+{link.reward_amount}</p>
-                        <p className="text-[8px] text-muted-foreground uppercase">coins</p>
+                        <p className="text-[8px] text-muted-foreground uppercase">XP</p>
+                        {link.reward_type === "xp_and_token" && (
+                          <p className="text-[9px] font-semibold text-primary">+{link.token_reward_amount} TKN</p>
+                        )}
                       </div>
                     </button>
                   </motion.div>
