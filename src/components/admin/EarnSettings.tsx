@@ -84,6 +84,23 @@ const EarnSettings = () => {
     setLoading(false);
   };
 
+  const fetchAdStats = async () => {
+    const { data } = await supabase.from("user_ad_views").select("ad_id, reward_amount, viewed_at");
+    if (!data) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const perAd: Record<string, { views: number; rewards: number }> = {};
+    let totalViews = 0, totalRewards = 0, todayViews = 0;
+    data.forEach((v: any) => {
+      totalViews++;
+      totalRewards += Number(v.reward_amount);
+      if (v.viewed_at?.slice(0, 10) === today) todayViews++;
+      if (!perAd[v.ad_id]) perAd[v.ad_id] = { views: 0, rewards: 0 };
+      perAd[v.ad_id].views++;
+      perAd[v.ad_id].rewards += Number(v.reward_amount);
+    });
+    setAdStats({ totalViews, totalRewards, todayViews, perAd });
+  };
+
   // ─── TASK CRUD ───
   const openTaskModal = (task?: any) => {
     if (task) {
