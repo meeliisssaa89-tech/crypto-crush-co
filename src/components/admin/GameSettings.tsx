@@ -43,6 +43,8 @@ const GameSettings = () => {
   const [dailyBoxLimit, setDailyBoxLimit] = useState("5");
   const [boxUnlockMethod, setBoxUnlockMethod] = useState("both");
   const [boxTasksRequired, setBoxTasksRequired] = useState("3");
+  const [dailyBonusEnabled, setDailyBonusEnabled] = useState(true);
+  const [dailyBonusRewards, setDailyBonusRewards] = useState("10,15,25,35,50,75,150");
 
   // Form state for new/edit prize
   const [form, setForm] = useState({
