@@ -144,6 +144,10 @@ const AirdropScreen = () => {
 
   const claimTokens = async () => {
     if (!user || !airdrop || claiming) return;
+    if (!config.claim_enabled) {
+      toast.error("Claims are currently disabled");
+      return;
+    }
     const claimable = airdrop.tokens_earned - airdrop.tokens_locked - airdrop.tokens_claimed;
     if (claimable <= 0) {
       toast.error("No tokens available to claim");
