@@ -120,7 +120,7 @@ const SpinWheel = ({ open, onOpenChange }: SpinWheelProps) => {
         description: `Spin Wheel: ${prize.label}`,
       });
 
-      await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: Math.floor(prize.value / 4) });
+      await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: Math.floor(prize.value) });
 
       setSpinsToday(prev => prev + 1);
       setSaving(false);
