@@ -254,6 +254,17 @@ const EarnScreen = () => {
     setCountdowns(prev => { const n = { ...prev }; delete n[`sl_${link.id}`]; return n; });
   };
 
+  const showMonetag = (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const fn = window['show_8914235'];
+      if (typeof fn === 'function') {
+        fn().then(() => resolve()).catch(() => reject(new Error('Ad failed')));
+      } else {
+        reject(new Error('Monetag SDK not loaded'));
+      }
+    });
+  };
+
   const watchAd = async (ad: AdRow) => {
     if (!user) return;
     const cdKey = `ad_${ad.id}`;
@@ -264,8 +275,25 @@ const EarnScreen = () => {
 
     hapticFeedback.impact("medium");
     setCompleting(ad.id);
-    setCountdowns(prev => ({ ...prev, [`watching_${ad.id}`]: 3 }));
-    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    const totalAds = ad.ads_per_click || 1;
+    
+    try {
+      for (let i = 0; i < totalAds; i++) {
+        toast.info(`📺 Ad ${i + 1}/${totalAds}...`);
+        setCountdowns(prev => ({ ...prev, [`watching_${ad.id}`]: totalAds - i }));
+        await showMonetag();
+        // Small delay between ads
+        if (i < totalAds - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+    } catch (err) {
+      toast.error('Ad failed to load. Please try again.');
+      setCompleting(null);
+      setCountdowns(prev => { const n = { ...prev }; delete n[`watching_${ad.id}`]; return n; });
+      return;
+    }
 
     await supabase.from("user_ad_views").insert({
       user_id: user.id, ad_id: ad.id, reward_amount: ad.reward_amount,
@@ -277,8 +305,9 @@ const EarnScreen = () => {
     setAdCooldowns(prev => ({ ...prev, [ad.id]: new Date() }));
     setCountdowns(prev => ({ ...prev, [cdKey]: ad.cooldown_seconds }));
     hapticFeedback.notification("success");
-    toast.success(`+${ad.reward_amount} coins earned!`);
+    toast.success(`+${ad.reward_amount} coins earned! (${totalAds} ads watched)`);
     setCompleting(null);
+    setCountdowns(prev => { const n = { ...prev }; delete n[`watching_${ad.id}`]; return n; });
   };
 
   const formatTime = (seconds: number) => {

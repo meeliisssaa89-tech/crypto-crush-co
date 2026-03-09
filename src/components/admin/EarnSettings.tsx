@@ -537,6 +537,11 @@ const EarnSettings = () => {
           </DialogHeader>
           <div className="space-y-3">
             <Input placeholder="Ad title" value={adForm.title} onChange={e => setAdForm({ ...adForm, title: e.target.value })} className="bg-secondary/50" />
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Ad Zone ID (Monetag)</label>
+              <Input placeholder="e.g. show_8914235" value={adForm.ad_zone_id} onChange={e => setAdForm({ ...adForm, ad_zone_id: e.target.value })} className="bg-secondary/50" />
+              <p className="text-[10px] text-muted-foreground mt-1">The Monetag function name from your SDK</p>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Type</label>
@@ -552,10 +557,17 @@ const EarnSettings = () => {
                 <Input type="number" value={adForm.reward_amount} onChange={e => setAdForm({ ...adForm, reward_amount: Number(e.target.value) })} className="bg-secondary/50" />
               </div>
             </div>
-            <div>
-              <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Cooldown (seconds)</label>
-              <Input type="number" value={adForm.cooldown_seconds} onChange={e => setAdForm({ ...adForm, cooldown_seconds: Number(e.target.value) })} className="bg-secondary/50" />
-              <p className="text-[10px] text-muted-foreground mt-1">= {Math.floor(adForm.cooldown_seconds / 60)} min {adForm.cooldown_seconds % 60}s between views</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Cooldown (seconds)</label>
+                <Input type="number" value={adForm.cooldown_seconds} onChange={e => setAdForm({ ...adForm, cooldown_seconds: Number(e.target.value) })} className="bg-secondary/50" />
+                <p className="text-[10px] text-muted-foreground mt-1">= {Math.floor(adForm.cooldown_seconds / 60)}m {adForm.cooldown_seconds % 60}s</p>
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Ads Per Click</label>
+                <Input type="number" min={1} max={5} value={adForm.ads_per_click} onChange={e => setAdForm({ ...adForm, ads_per_click: Number(e.target.value) })} className="bg-secondary/50" />
+                <p className="text-[10px] text-muted-foreground mt-1">Sequential ads shown</p>
+              </div>
             </div>
             <Button onClick={saveAd} className="w-full gradient-primary text-white border-0">
               {isCreating ? "Create Ad" : "Save Changes"}
