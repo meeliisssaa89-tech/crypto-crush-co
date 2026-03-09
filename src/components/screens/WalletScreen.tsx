@@ -207,11 +207,8 @@ const WalletScreen = () => {
             <div className="w-32 h-32 mx-auto bg-muted rounded-xl flex items-center justify-center">
               <QrCode className="h-16 w-16 text-muted-foreground" />
             </div>
-            <div className="glass rounded-lg p-3 flex items-center gap-2">
-              <p className="text-xs text-muted-foreground flex-1 truncate font-mono">0x1a2b...f8e9</p>
-              <button onClick={() => { hapticFeedback.notification("success"); toast.success("Address copied!"); }} className="text-primary"><Copy className="h-4 w-4" /></button>
-            </div>
-            <p className="text-[10px] text-center text-muted-foreground">Only send supported tokens to this address</p>
+            <p className="text-sm text-center text-foreground font-medium">Deposit via TON Wallet</p>
+            <p className="text-xs text-center text-muted-foreground">Connect your TON wallet in the wallet section above to deposit funds.</p>
           </div>
         </DialogContent>
       </Dialog>
@@ -296,7 +293,15 @@ const WalletScreen = () => {
               </div>
             </div>
             <div className="glass rounded-lg p-3">
-              <div className="flex justify-between text-xs"><span className="text-muted-foreground">Rate</span><span className="text-foreground">1 EARN = $0.10</span></div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Rate</span>
+                <span className="text-foreground">
+                  {(() => {
+                    const earnCurr = currencies.find(c => c.symbol === "EARN");
+                    return earnCurr ? `1 EARN = $${Number(earnCurr.exchange_rate).toFixed(4)}` : "Loading...";
+                  })()}
+                </span>
+              </div>
             </div>
             <Button className="w-full gradient-primary text-white border-0">Swap</Button>
           </div>
