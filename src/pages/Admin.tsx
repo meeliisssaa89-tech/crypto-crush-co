@@ -383,6 +383,9 @@ const AdminDashboard = () => {
         {/* EARN */}
         {activeSection === "earn" && <EarnSettings />}
 
+        {/* REFERRALS */}
+        {activeSection === "referrals" && <ReferralSettings />}
+
         {/* AIRDROP */}
         {activeSection === "airdrop" && <AirdropSettings />}
 
