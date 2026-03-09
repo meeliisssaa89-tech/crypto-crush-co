@@ -415,11 +415,16 @@ const EarnSettings = () => {
                       {ad.is_active ? "active" : "paused"}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[10px] text-earn">+{ad.reward_amount}</span>
-                    <span className="text-[10px] text-accent flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" />{Math.floor(ad.cooldown_seconds / 60)}m cooldown</span>
-                    <span className="text-[10px] text-muted-foreground">{ad.ad_type}</span>
-                  </div>
+                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                     <span className="text-[10px] text-earn">+{ad.reward_amount}</span>
+                     <span className="text-[10px] text-accent flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" />{Math.floor(ad.cooldown_seconds / 60)}m</span>
+                     <span className="text-[10px] text-muted-foreground">{ad.ad_type}</span>
+                     {adStats.perAd[ad.id] && (
+                       <span className="text-[10px] text-primary flex items-center gap-0.5">
+                         <BarChart3 className="h-2.5 w-2.5" />{adStats.perAd[ad.id].views} views
+                       </span>
+                     )}
+                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button onClick={() => toggleAd(ad.id, ad.is_active)} className="p-1.5 rounded-lg hover:bg-secondary/50">
