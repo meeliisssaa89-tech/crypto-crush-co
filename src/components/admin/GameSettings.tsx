@@ -79,6 +79,8 @@ const GameSettings = () => {
       if (s.daily_box_limit) setDailyBoxLimit(String(s.daily_box_limit));
       if (s.box_unlock_method) setBoxUnlockMethod(String(s.box_unlock_method));
       if (s.box_tasks_required) setBoxTasksRequired(String(s.box_tasks_required));
+      if (s.daily_bonus_enabled !== undefined) setDailyBonusEnabled(s.daily_bonus_enabled === true || s.daily_bonus_enabled === "true");
+      if (s.daily_bonus_rewards) setDailyBonusRewards(String(s.daily_bonus_rewards));
     }
     setLoading(false);
   };
