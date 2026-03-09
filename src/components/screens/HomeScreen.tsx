@@ -97,10 +97,10 @@ const HomeScreen = () => {
   const handleInviteFriend = () => {
     hapticFeedback.impact("medium");
     if (isTelegram && profile?.referral_code) {
-      const botUrl = `https://t.me/share/url?url=https://t.me/earnbot?start=${profile.referral_code}&text=Join%20CryptoMaine%20and%20earn%20crypto!%20🚀`;
+      const botUrl = `https://t.me/share/url?url=https://t.me/Eg_Token_bot?start=${profile.referral_code}&text=Join%20CryptoMaine%20and%20earn%20crypto!%20🚀`;
       openTelegramLink(botUrl);
     } else if (profile?.referral_code) {
-      navigator.clipboard.writeText(`https://t.me/earnbot?start=${profile.referral_code}`);
+      navigator.clipboard.writeText(`https://t.me/Eg_Token_bot?start=${profile.referral_code}`);
       toast.success("Referral link copied!");
     }
   };
