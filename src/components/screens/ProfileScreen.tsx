@@ -57,7 +57,7 @@ const ProfileScreen = () => {
     if (data) setTotalEarned(data.reduce((sum, t) => sum + Number(t.amount), 0));
   };
 
-  const botName = "earnbot";
+  const botName = "Eg_Token_bot";
   const referralCode = profile?.referral_code ?? "";
   const referralLink = `https://t.me/${botName}?start=${referralCode}`;
   const avatarUrl = profile?.avatar_url || tgUser?.photo_url;
