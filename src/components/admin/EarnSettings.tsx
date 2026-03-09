@@ -209,6 +209,8 @@ const EarnSettings = () => {
       title: adForm.title.trim(), ad_type: adForm.ad_type,
       reward_amount: Number(adForm.reward_amount),
       cooldown_seconds: Number(adForm.cooldown_seconds),
+      ad_zone_id: adForm.ad_zone_id.trim() || null,
+      ads_per_click: Number(adForm.ads_per_click) || 1,
     };
 
     if (isCreating || !adModal?.id) {
