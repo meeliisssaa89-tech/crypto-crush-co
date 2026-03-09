@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Copy, Share2, Users, ChevronRight, Settings, Globe, Bell, Shield, LogOut, Crown, TrendingUp, Send, QrCode } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
+import { Copy, Share2, Users, Crown, TrendingUp, Send } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useTG } from "@/components/layout/TelegramProvider";
-import { hapticFeedback, openTelegramLink, showAlert, isTelegramEnvironment } from "@/hooks/useTelegram";
+import { hapticFeedback, openTelegramLink, isTelegramEnvironment } from "@/hooks/useTelegram";
 import { toast } from "sonner";
 
 const ProfileScreen = () => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { isTelegram, user: tgUser } = useTG();
   const [profile, setProfile] = useState<any>(null);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
@@ -58,10 +57,12 @@ const ProfileScreen = () => {
     if (data) setTotalEarned(data.reduce((sum, t) => sum + Number(t.amount), 0));
   };
 
-  const botName = "earnbot"; // Update with your bot username
+  const botName = "earnbot";
   const referralCode = profile?.referral_code ?? "";
   const referralLink = `https://t.me/${botName}?start=${referralCode}`;
-  const username = profile?.username ?? tgUser?.first_name ?? user?.email?.split("@")[0] ?? "User";
+  const avatarUrl = profile?.avatar_url || tgUser?.photo_url;
+  const username = profile?.username ?? tgUser?.first_name ?? tgUser?.username ?? "User";
+  const telegramUsername = tgUser?.username || profile?.username;
   const level = profile?.level ?? 1;
   const streakDays = profile?.streak_days ?? 0;
 
@@ -81,24 +82,13 @@ const ProfileScreen = () => {
     }
   };
 
-  const handleLogout = async () => {
-    if (isTelegramEnvironment()) {
-      const tg = window.Telegram?.WebApp;
-      tg?.showConfirm("Are you sure you want to logout?", async (confirmed) => {
-        if (confirmed) await signOut();
-      });
-    } else {
-      await signOut();
-    }
-  };
-
   return (
     <div className="px-4 pt-6 pb-4 space-y-5">
       {/* Profile Header */}
       <div className="flex items-center gap-4">
         <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center text-2xl overflow-hidden">
-          {tgUser?.photo_url ? (
-            <img src={tgUser.photo_url} alt="avatar" className="w-full h-full object-cover" />
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
           ) : (
             username[0]?.toUpperCase() ?? "👤"
           )}
@@ -108,7 +98,9 @@ const ProfileScreen = () => {
             <h1 className="text-lg font-display font-bold text-foreground">{username}</h1>
             {tgUser?.is_premium && <Crown className="h-4 w-4 text-warning" />}
           </div>
-          <p className="text-xs text-muted-foreground">Level {level} • {tgUser?.username ? `@${tgUser.username}` : user?.email}</p>
+          <p className="text-xs text-muted-foreground">
+            Level {level} {telegramUsername ? `• @${telegramUsername}` : ""}
+          </p>
           <div className="flex items-center gap-3 mt-1">
             <div className="flex items-center gap-1">
               <TrendingUp className="h-3 w-3 text-earn" />
@@ -176,45 +168,16 @@ const ProfileScreen = () => {
             withdrawals.map((w) => (
               <div key={w.id} className="glass rounded-lg p-3 flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-foreground">{w.amount} EARN</p>
+                  <p className="text-sm text-foreground">{w.amount} XP</p>
                   <p className="text-[10px] text-muted-foreground">{w.method} • {new Date(w.created_at).toLocaleDateString()}</p>
                 </div>
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                  w.status === "completed" ? "bg-earn/20 text-earn" : w.status === "pending" ? "bg-warning/20 text-warning" : "bg-destructive/20 text-destructive"
+                  w.status === "completed" || w.status === "approved" ? "bg-earn/20 text-earn" : w.status === "pending" ? "bg-warning/20 text-warning" : "bg-destructive/20 text-destructive"
                 }`}>{w.status}</span>
               </div>
             ))
           )}
         </div>
-      </div>
-
-      {/* Settings */}
-      <div className="space-y-1">
-        <h3 className="text-sm font-semibold text-foreground mb-2">Settings</h3>
-        {[
-          { icon: Globe, label: "Language", value: tgUser?.language_code?.toUpperCase() || "EN" },
-          { icon: Bell, label: "Notifications", value: "On" },
-          { icon: Shield, label: "Security", value: "" },
-        ].map((item) => (
-          <button
-            key={item.label}
-            onClick={() => hapticFeedback.selection()}
-            className="glass rounded-lg p-3 w-full flex items-center gap-3 hover:bg-secondary/50 transition-colors"
-          >
-            <item.icon className="h-4 w-4 text-muted-foreground" />
-            <span className="flex-1 text-sm text-left text-foreground">{item.label}</span>
-            {item.value && <span className="text-xs text-muted-foreground">{item.value}</span>}
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </button>
-        ))}
-        <button
-          onClick={handleLogout}
-          className="glass rounded-lg p-3 w-full flex items-center gap-3 hover:bg-secondary/50 transition-colors"
-        >
-          <LogOut className="h-4 w-4 text-destructive" />
-          <span className="flex-1 text-sm text-left text-destructive">Logout</span>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </button>
       </div>
     </div>
   );
