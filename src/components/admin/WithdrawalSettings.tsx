@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
 import {
-  ArrowDownUp, Check, X, Loader2, Eye, MessageSquare, Filter,
-  Clock, CheckCircle2, XCircle, Send, ChevronDown
+  ArrowDownUp, Check, X, Loader2, Clock, CheckCircle2, XCircle, Send
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,10 +38,19 @@ const WithdrawalSettings = () => {
   const [adminNote, setAdminNote] = useState("");
   const [processing, setProcessing] = useState(false);
   const [notifying, setNotifying] = useState(false);
+  const [tickerConfig, setTickerConfig] = useState({ xp_to_ton_rate: 0.0001, withdrawal_fee_percent: 2 });
 
   useEffect(() => {
     fetchWithdrawals();
+    fetchTickerConfig();
   }, []);
+
+  const fetchTickerConfig = async () => {
+    const { data } = await supabase.from("app_settings").select("*").eq("key", "ticker_config").single();
+    if (data?.value && typeof data.value === "object") {
+      setTickerConfig(prev => ({ ...prev, ...(data.value as any) }));
+    }
+  };
 
   const fetchWithdrawals = async () => {
     setLoading(true);
@@ -68,6 +75,10 @@ const WithdrawalSettings = () => {
     setLoading(false);
   };
 
+  const xpToTon = (xpAmount: number) => {
+    return (xpAmount * tickerConfig.xp_to_ton_rate).toFixed(6);
+  };
+
   const processWithdrawal = async (id: string, status: "approved" | "rejected") => {
     setProcessing(true);
     const { error } = await supabase.from("withdrawal_requests").update({
@@ -84,10 +95,10 @@ const WithdrawalSettings = () => {
 
     toast.success(`طلب السحب تم ${status === "approved" ? "قبوله" : "رفضه"} بنجاح!`);
 
-    // Send notification
     const withdrawal = withdrawals.find(w => w.id === id);
     if (withdrawal) {
       await sendNotification(withdrawal, status);
+      await sendChannelNotification(withdrawal, status);
     }
 
     setSelectedWithdrawal(null);
@@ -108,13 +119,38 @@ const WithdrawalSettings = () => {
 
       const statusEmoji = status === "approved" ? "✅" : "❌";
       const statusText = status === "approved" ? "تمت الموافقة" : "تم الرفض";
-      const message = `${statusEmoji} *تحديث طلب السحب*\n\nالمبلغ: ${withdrawal.amount}\nالحالة: ${statusText}${adminNote ? `\nملاحظة: ${adminNote}` : ""}`;
+      const tonAmount = xpToTon(withdrawal.amount - withdrawal.fee_amount);
+      const message = `${statusEmoji} <b>تحديث طلب السحب</b>\n\nالمبلغ: ${withdrawal.amount} XP\nقيمة TON: ${tonAmount} TON\nالحالة: ${statusText}${adminNote ? `\nملاحظة: ${adminNote}` : ""}`;
 
       await supabase.functions.invoke("send-telegram-message", {
         body: { message, chat_id: profile.telegram_id },
       });
     } catch {
-      // Silent fail for notifications
+      // Silent fail
+    }
+  };
+
+  const sendChannelNotification = async (withdrawal: Withdrawal, status: "approved" | "rejected") => {
+    try {
+      // Get channel ID from settings
+      const { data: setting } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "withdrawal_channel_id")
+        .single();
+
+      const channelId = (setting?.value as any)?.channel_id;
+      if (!channelId) return;
+
+      const statusEmoji = status === "approved" ? "✅" : "❌";
+      const tonAmount = xpToTon(withdrawal.amount - withdrawal.fee_amount);
+      const message = `${statusEmoji} <b>عملية سحب ${status === "approved" ? "مقبولة" : "مرفوضة"}</b>\n\n👤 @${withdrawal.username}\n💰 ${withdrawal.amount} XP → ${tonAmount} TON\n📍 ${withdrawal.wallet_address || "—"}`;
+
+      await supabase.functions.invoke("send-telegram-message", {
+        body: { message, channel_id: channelId },
+      });
+    } catch {
+      // Silent fail
     }
   };
 
@@ -150,7 +186,8 @@ const WithdrawalSettings = () => {
 
   const filtered = withdrawals.filter(w => filter === "all" || w.status === filter);
   const pendingCount = withdrawals.filter(w => w.status === "pending").length;
-  const pendingTotal = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
+  const pendingTotalXP = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
+  const pendingTotalTON = pendingTotalXP * tickerConfig.xp_to_ton_rate;
 
   if (loading) {
     return (
@@ -169,8 +206,8 @@ const WithdrawalSettings = () => {
           <p className="text-lg font-bold text-warning">{pendingCount}</p>
         </div>
         <div className="glass rounded-xl p-3 text-center">
-          <p className="text-[10px] text-muted-foreground uppercase">المجموع المعلق</p>
-          <p className="text-lg font-bold text-foreground">{pendingTotal.toFixed(2)}</p>
+          <p className="text-[10px] text-muted-foreground uppercase">المجموع (TON)</p>
+          <p className="text-lg font-bold text-foreground">{pendingTotalTON.toFixed(4)}</p>
         </div>
         <div className="glass rounded-xl p-3 text-center">
           <p className="text-[10px] text-muted-foreground uppercase">الكل</p>
@@ -208,6 +245,7 @@ const WithdrawalSettings = () => {
         filtered.map((w) => {
           const sc = statusConfig[w.status] || statusConfig.pending;
           const StatusIcon = sc.icon;
+          const tonValue = xpToTon(w.amount - w.fee_amount);
           return (
             <div
               key={w.id}
@@ -220,18 +258,18 @@ const WithdrawalSettings = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-foreground">{Number(w.amount).toLocaleString()}</p>
+                    <p className="text-sm font-semibold text-foreground">{tonValue} TON</p>
+                    <span className="text-[10px] text-muted-foreground">({Number(w.amount)} XP)</span>
                     <Badge className={`text-[9px] px-1.5 py-0 h-4 border-0 ${sc.bg} ${sc.color}`}>
                       {w.status}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-[10px] text-muted-foreground">@{w.username}</span>
-                    <span className="text-[10px] text-muted-foreground">• {w.method}</span>
                     <span className="text-[10px] text-muted-foreground">• {new Date(w.created_at).toLocaleDateString()}</span>
                   </div>
                   {w.wallet_address && (
-                    <p className="text-[10px] text-muted-foreground truncate mt-0.5">{w.wallet_address}</p>
+                    <p className="text-[10px] text-muted-foreground truncate mt-0.5 font-mono">{w.wallet_address}</p>
                   )}
                 </div>
                 {w.status === "pending" && (
@@ -268,8 +306,9 @@ const WithdrawalSettings = () => {
               <div className="glass rounded-xl p-3 space-y-2">
                 {[
                   { label: "المستخدم", value: `@${selectedWithdrawal.username}` },
-                  { label: "المبلغ", value: Number(selectedWithdrawal.amount).toLocaleString() },
-                  { label: "الرسوم", value: Number(selectedWithdrawal.fee_amount).toLocaleString() },
+                  { label: "المبلغ (XP)", value: Number(selectedWithdrawal.amount).toLocaleString() },
+                  { label: "الرسوم (XP)", value: Number(selectedWithdrawal.fee_amount).toLocaleString() },
+                  { label: "القيمة (TON)", value: `${xpToTon(selectedWithdrawal.amount - selectedWithdrawal.fee_amount)} TON` },
                   { label: "الطريقة", value: selectedWithdrawal.method },
                   { label: "العنوان", value: selectedWithdrawal.wallet_address || "—" },
                   { label: "التاريخ", value: new Date(selectedWithdrawal.created_at).toLocaleString() },
@@ -282,7 +321,6 @@ const WithdrawalSettings = () => {
                 ))}
               </div>
 
-              {/* Admin Note */}
               <div>
                 <p className="text-xs text-muted-foreground mb-1.5">ملاحظة / رسالة إشعار</p>
                 <Textarea
@@ -293,7 +331,6 @@ const WithdrawalSettings = () => {
                 />
               </div>
 
-              {/* Actions */}
               {selectedWithdrawal.status === "pending" ? (
                 <div className="grid grid-cols-2 gap-2">
                   <Button

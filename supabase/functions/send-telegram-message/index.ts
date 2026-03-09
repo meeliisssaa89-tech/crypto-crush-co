@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req) => {
@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { message, chat_id, broadcast, parse_mode } = await req.json();
+    const { message, chat_id, broadcast, parse_mode, photo_url, inline_keyboard, channel_id } = await req.json();
 
     if (!message) {
       return new Response(
@@ -32,10 +32,61 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const results: Array<{ chat_id: number; success: boolean; error?: string }> = [];
+    const results: Array<{ chat_id: number | string; success: boolean; error?: string }> = [];
+
+    // Build reply_markup if inline_keyboard is provided
+    const reply_markup = inline_keyboard ? { inline_keyboard } : undefined;
+
+    const sendToChat = async (targetChatId: number | string) => {
+      try {
+        let endpoint: string;
+        let body: Record<string, any>;
+
+        if (photo_url) {
+          endpoint = `https://api.telegram.org/bot${botToken}/sendPhoto`;
+          body = {
+            chat_id: targetChatId,
+            photo: photo_url,
+            caption: message,
+            parse_mode: parse_mode || "HTML",
+            ...(reply_markup ? { reply_markup: JSON.stringify(reply_markup) } : {}),
+          };
+        } else {
+          endpoint = `https://api.telegram.org/bot${botToken}/sendMessage`;
+          body = {
+            chat_id: targetChatId,
+            text: message,
+            parse_mode: parse_mode || "HTML",
+            ...(reply_markup ? { reply_markup: JSON.stringify(reply_markup) } : {}),
+          };
+        }
+
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        results.push({
+          chat_id: targetChatId,
+          success: data.ok,
+          error: data.ok ? undefined : data.description,
+        });
+      } catch (err) {
+        results.push({
+          chat_id: targetChatId,
+          success: false,
+          error: String(err),
+        });
+      }
+    };
+
+    // Send to specific channel if provided
+    if (channel_id) {
+      await sendToChat(channel_id);
+    }
 
     if (broadcast) {
-      // Get all users with telegram_id
       const { data: profiles } = await supabase
         .from("profiles")
         .select("telegram_id")
@@ -43,53 +94,15 @@ Deno.serve(async (req) => {
 
       if (profiles && profiles.length > 0) {
         for (const profile of profiles) {
-          try {
-            const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                chat_id: profile.telegram_id,
-                text: message,
-                parse_mode: parse_mode || "HTML",
-              }),
-            });
-            const data = await res.json();
-            results.push({
-              chat_id: profile.telegram_id!,
-              success: data.ok,
-              error: data.ok ? undefined : data.description,
-            });
-          } catch (err) {
-            results.push({
-              chat_id: profile.telegram_id!,
-              success: false,
-              error: String(err),
-            });
-          }
-          // Rate limit: max 30 messages per second
+          await sendToChat(profile.telegram_id!);
           await new Promise((r) => setTimeout(r, 35));
         }
       }
     } else if (chat_id) {
-      // Send to specific user
-      const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id,
-          text: message,
-          parse_mode: parse_mode || "HTML",
-        }),
-      });
-      const data = await res.json();
-      results.push({
-        chat_id,
-        success: data.ok,
-        error: data.ok ? undefined : data.description,
-      });
-    } else {
+      await sendToChat(chat_id);
+    } else if (!channel_id) {
       return new Response(
-        JSON.stringify({ error: "Either chat_id or broadcast=true is required" }),
+        JSON.stringify({ error: "Either chat_id, broadcast=true, or channel_id is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -97,7 +110,7 @@ Deno.serve(async (req) => {
     const successCount = results.filter((r) => r.success).length;
     const failCount = results.filter((r) => !r.success).length;
 
-    // Log the broadcast activity
+    // Log activity
     const authHeader = req.headers.get("Authorization");
     if (authHeader) {
       const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
