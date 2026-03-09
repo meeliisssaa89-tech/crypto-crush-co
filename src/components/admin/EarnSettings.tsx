@@ -60,6 +60,7 @@ const EarnSettings = () => {
   // Ad form
   const [adForm, setAdForm] = useState({
     title: "", ad_type: "video", reward_amount: 5, cooldown_seconds: 300,
+    ad_zone_id: "", ads_per_click: 1,
   });
 
   useEffect(() => { fetchAll(); }, []);
