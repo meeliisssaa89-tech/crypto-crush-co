@@ -49,7 +49,7 @@ const AuthScreen = () => {
             افتح البوت على Telegram وانقر "Start" للدخول تلقائياً بحسابك
           </p>
           <a
-            href="https://t.me/earnbot"
+            href="https://t.me/Eg_Token_bot"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-6 py-3 gradient-primary text-white rounded-xl text-sm font-semibold"
