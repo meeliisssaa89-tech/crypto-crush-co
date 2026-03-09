@@ -255,7 +255,10 @@ const EarnScreen = () => {
     setCompletedShortlinks(prev => new Set(prev).add(link.id));
     setShortlinkEarnings(prev => prev + link.reward_amount);
     hapticFeedback.notification("success");
-    toast.success(`+${link.reward_amount} coins earned!`);
+    const rewardMsg = link.reward_type === "xp_and_token"
+      ? `+${link.reward_amount} XP & +${link.token_reward_amount} TKN earned!`
+      : `+${link.reward_amount} XP earned!`;
+    toast.success(rewardMsg);
     setCompleting(null);
     setCountdowns(prev => { const n = { ...prev }; delete n[`sl_${link.id}`]; return n; });
   };
