@@ -178,31 +178,46 @@ export type Database = {
       }
       currencies: {
         Row: {
+          chain: string | null
+          contract_address: string | null
           created_at: string
+          decimals: number | null
           exchange_rate: number
+          icon_url: string | null
           id: string
           is_active: boolean
           name: string
+          sort_order: number | null
           symbol: string
           total_supply: number | null
           updated_at: string
         }
         Insert: {
+          chain?: string | null
+          contract_address?: string | null
           created_at?: string
+          decimals?: number | null
           exchange_rate?: number
+          icon_url?: string | null
           id?: string
           is_active?: boolean
           name: string
+          sort_order?: number | null
           symbol: string
           total_supply?: number | null
           updated_at?: string
         }
         Update: {
+          chain?: string | null
+          contract_address?: string | null
           created_at?: string
+          decimals?: number | null
           exchange_rate?: number
+          icon_url?: string | null
           id?: string
           is_active?: boolean
           name?: string
+          sort_order?: number | null
           symbol?: string
           total_supply?: number | null
           updated_at?: string
