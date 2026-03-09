@@ -194,15 +194,6 @@ const EarnScreen = () => {
       window.open(task.url, "_blank");
     }
 
-    // Verification flow
-    if (task.verification_type === "timer" && task.cooldown_seconds > 0) {
-      // Start a visible countdown
-      setCountdowns(prev => ({ ...prev, [`task_${task.id}`]: task.cooldown_seconds }));
-      await new Promise(resolve => setTimeout(resolve, task.cooldown_seconds * 1000));
-    } else if (task.verification_type === "timer") {
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    }
-
     // Check if already completed
     const { data: existing } = await supabase.from("user_tasks")
       .select("id").eq("user_id", user.id).eq("task_id", task.id).eq("status", "completed").maybeSingle();
@@ -212,12 +203,13 @@ const EarnScreen = () => {
       return;
     }
 
+    // Award XP FIRST before countdown
     const { error: taskError } = await supabase.from("user_tasks").insert({
       user_id: user.id, task_id: task.id, status: "completed", completed_at: new Date().toISOString(),
     });
     if (taskError) { toast.error("Failed to complete task"); setCompleting(null); return; }
 
-    // Add XP to profile (safe - creates profile if missing)
+    // Add XP immediately
     await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: task.reward_amount });
 
     // Add token if reward_type includes token
@@ -231,17 +223,20 @@ const EarnScreen = () => {
     });
 
     setUserTaskMap(prev => ({ ...prev, [task.id]: "completed" }));
-    if (task.cooldown_seconds > 0) {
-      setTaskCooldowns(prev => ({ ...prev, [task.id]: task.cooldown_seconds }));
-    }
-    
+
     hapticFeedback.notification("success");
     const rewardMsg = task.reward_type === "xp_and_token" 
       ? `+${task.reward_amount} XP & +${task.token_reward_amount} TKN earned!`
       : `+${task.reward_amount} XP earned!`;
     toast.success(rewardMsg);
+
+    // THEN start the countdown timer (cosmetic only, reward already given)
+    if (task.verification_type === "timer" && task.cooldown_seconds > 0) {
+      setCountdowns(prev => ({ ...prev, [`task_${task.id}`]: task.cooldown_seconds }));
+      setTaskCooldowns(prev => ({ ...prev, [task.id]: task.cooldown_seconds }));
+    }
+
     setCompleting(null);
-    setCountdowns(prev => { const n = { ...prev }; delete n[`task_${task.id}`]; return n; });
   };
 
   const completeShortlink = async (link: ShortlinkRow) => {
