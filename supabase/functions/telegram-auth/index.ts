@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 async function hmacSha256(key: string | ArrayBuffer, data: string): Promise<ArrayBuffer> {
@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
 
     const authDate = parseInt(data.auth_date || "0", 10);
     const now = Math.floor(Date.now() / 1000);
-    if (now - authDate > 300) {
+    if (now - authDate > 86400) {
       return new Response(
         JSON.stringify({ error: "initData expired" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
