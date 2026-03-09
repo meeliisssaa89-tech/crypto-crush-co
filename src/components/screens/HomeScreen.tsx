@@ -166,8 +166,31 @@ const HomeScreen = () => {
       >
         <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/5 -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-white/5 translate-y-1/2 -translate-x-1/2" />
-        <p className="text-sm text-white/70 mb-1">Level {level}</p>
-        <h2 className="text-3xl font-display font-bold text-white mb-3">{xp.toLocaleString()} XP</h2>
+
+        {/* Price Ticker Ribbon */}
+        {tickerConfig.ticker_enabled && (
+          <div className="absolute top-0 left-0 z-10">
+            <div
+              className="bg-white/15 backdrop-blur-sm px-4 py-1 pr-6"
+              style={{
+                clipPath: "polygon(0 0, 100% 0, 85% 100%, 0 100%)",
+                minWidth: "140px",
+              }}
+            >
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] text-white/60 uppercase tracking-wider">1 XP</span>
+                <span className="text-[10px] font-bold text-white">= ${tickerConfig.points_usd_rate}</span>
+                <TrendingUp className="h-2.5 w-2.5 text-emerald-300" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        <p className="text-sm text-white/70 mb-1 mt-2">Level {level}</p>
+        <h2 className="text-3xl font-display font-bold text-white mb-1">{xp.toLocaleString()} XP</h2>
+        {tickerConfig.ticker_enabled && (
+          <p className="text-[10px] text-white/50 mb-2">≈ ${(xp * tickerConfig.points_usd_rate).toFixed(2)} USD</p>
+        )}
         <div className="flex gap-4">
           <div>
             <p className="text-[10px] text-white/50 uppercase tracking-wider">Streak</p>
