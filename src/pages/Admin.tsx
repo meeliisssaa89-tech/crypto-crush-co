@@ -364,6 +364,9 @@ const AdminDashboard = () => {
         {/* AIRDROP */}
         {activeSection === "airdrop" && <AirdropSettings />}
 
+        {/* TICKER */}
+        {activeSection === "ticker" && <TickerSettings />}
+
         {/* GAMES */}
         {activeSection === "games" && <GameSettings />}
 
