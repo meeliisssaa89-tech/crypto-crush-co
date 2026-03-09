@@ -1,12 +1,23 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { hmac } from "https://deno.land/x/hmac@v2.0.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function validateInitData(initData: string, botToken: string): { valid: boolean; data: Record<string, string> } {
+async function hmacSha256(key: string | ArrayBuffer, data: string): Promise<ArrayBuffer> {
+  const keyBuffer = typeof key === "string" ? new TextEncoder().encode(key) : key;
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw", keyBuffer, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  return crypto.subtle.sign("HMAC", cryptoKey, new TextEncoder().encode(data));
+}
+
+function bufToHex(buf: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function validateInitData(initData: string, botToken: string): Promise<{ valid: boolean; data: Record<string, string> }> {
   const params = new URLSearchParams(initData);
   const hash = params.get("hash");
   if (!hash) return { valid: false, data: {} };
@@ -16,8 +27,8 @@ function validateInitData(initData: string, botToken: string): { valid: boolean;
   entries.sort(([a], [b]) => a.localeCompare(b));
   const dataCheckString = entries.map(([k, v]) => `${k}=${v}`).join("\n");
 
-  const secretKey = hmac("sha256", "WebAppData", botToken, "utf8", "hex");
-  const computedHash = hmac("sha256", secretKey, dataCheckString, "hex", "hex");
+  const secretKey = await hmacSha256("WebAppData", botToken);
+  const computedHash = bufToHex(await hmacSha256(secretKey, dataCheckString));
 
   const data: Record<string, string> = {};
   for (const [k, v] of new URLSearchParams(initData).entries()) {
@@ -49,8 +60,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate initData
-    const { valid, data } = validateInitData(initData, botToken);
+    const { valid, data } = await validateInitData(initData, botToken);
     if (!valid) {
       return new Response(
         JSON.stringify({ error: "Invalid initData" }),
@@ -58,7 +68,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check auth_date freshness (allow 5 min)
     const authDate = parseInt(data.auth_date || "0", 10);
     const now = Math.floor(Date.now() / 1000);
     if (now - authDate > 300) {
@@ -68,7 +77,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Parse user from initData
     const tgUser = JSON.parse(data.user || "{}");
     const telegramId = tgUser.id;
     if (!telegramId) {
@@ -82,18 +90,12 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Generate a deterministic email for the TG user
     const email = `tg_${telegramId}@telegram.user`;
     const password = `tg_${telegramId}_${botToken.slice(0, 16)}`;
 
-    // Try to sign in first
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data: signInData } = await supabase.auth.signInWithPassword({ email, password });
 
     if (signInData?.session) {
-      // Update profile with latest TG info
       await supabase
         .from("profiles")
         .update({
@@ -113,7 +115,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // User doesn't exist — create account
     const { data: signUpData, error: signUpError } = await supabase.auth.admin.createUser({
       email,
       password,
@@ -131,7 +132,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Update profile with telegram_id
     await supabase
       .from("profiles")
       .update({
@@ -141,11 +141,7 @@ Deno.serve(async (req) => {
       })
       .eq("user_id", signUpData.user.id);
 
-    // Sign in the newly created user
-    const { data: newSession, error: sessionError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data: newSession, error: sessionError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (sessionError || !newSession.session) {
       return new Response(
