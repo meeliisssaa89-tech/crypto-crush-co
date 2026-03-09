@@ -44,6 +44,24 @@ const AirdropScreen = () => {
   const [totalParticipants, setTotalParticipants] = useState(0);
   const [claiming, setClaiming] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [config, setConfig] = useState({
+    lock_percentage: 70,
+    token_multiplier: 0.5,
+    claim_enabled: true,
+    allocations: [
+      { label: "Task Completion", pct: 40 },
+      { label: "Referral Bonus", pct: 25 },
+      { label: "Daily Activity", pct: 20 },
+      { label: "Special Events", pct: 15 },
+    ],
+    phases: [
+      { title: "Phase 1 — Accumulation", status: "active" },
+      { title: "Phase 2 — Snapshot", status: "upcoming" },
+      { title: "Phase 3 — Token Generation", status: "upcoming" },
+      { title: "Phase 4 — Vesting & Unlock", status: "upcoming" },
+      { title: "Phase 5 — Full Distribution", status: "upcoming" },
+    ],
+  });
 
   useEffect(() => {
     if (user) fetchData();
@@ -52,8 +70,15 @@ const AirdropScreen = () => {
   const fetchData = async () => {
     if (!user) return;
     setLoading(true);
-    await Promise.all([fetchAirdrop(), fetchLeaderboard()]);
+    await Promise.all([fetchAirdrop(), fetchLeaderboard(), fetchConfig()]);
     setLoading(false);
+  };
+
+  const fetchConfig = async () => {
+    const { data } = await supabase.from("app_settings").select("*").eq("key", "airdrop_config").single();
+    if (data?.value && typeof data.value === "object") {
+      setConfig(prev => ({ ...prev, ...(data.value as any) }));
+    }
   };
 
   const fetchAirdrop = async () => {
@@ -62,12 +87,12 @@ const AirdropScreen = () => {
     if (!ad) {
       const { data: txs } = await supabase.from("transactions").select("amount").eq("user_id", user.id).gt("amount", 0);
       const totalEarned = txs?.reduce((s, t) => s + Number(t.amount), 0) ?? 0;
-      const tokensEarned = Math.floor(totalEarned * 0.5);
+      const tokensEarned = Math.floor(totalEarned * config.token_multiplier);
       const { data: newAd } = await supabase.from("airdrops").insert({
         user_id: user.id,
         tokens_earned: tokensEarned,
         tokens_claimed: 0,
-        tokens_locked: Math.floor(tokensEarned * 0.7),
+        tokens_locked: Math.floor(tokensEarned * config.lock_percentage / 100),
       }).select().single();
       ad = newAd;
     }
@@ -119,6 +144,10 @@ const AirdropScreen = () => {
 
   const claimTokens = async () => {
     if (!user || !airdrop || claiming) return;
+    if (!config.claim_enabled) {
+      toast.error("Claims are currently disabled");
+      return;
+    }
     const claimable = airdrop.tokens_earned - airdrop.tokens_locked - airdrop.tokens_claimed;
     if (claimable <= 0) {
       toast.error("No tokens available to claim");
@@ -198,7 +227,7 @@ const AirdropScreen = () => {
         </TabsList>
 
         <TabsContent value="overview" className="mt-4 space-y-4">
-          <AirdropTokenBreakdown totalTokens={totalTokens} />
+          <AirdropTokenBreakdown totalTokens={totalTokens} allocations={config.allocations} />
 
           {/* Your Stats */}
           <div className="glass rounded-xl p-4 border border-primary/20">
@@ -225,7 +254,7 @@ const AirdropScreen = () => {
               <div className="bg-secondary/50 rounded-lg p-3 text-center">
                 <Lock className="h-5 w-5 text-muted-foreground mx-auto mb-1" />
                 <p className="text-lg font-bold text-foreground">{lockedTokens.toLocaleString()}</p>
-                <p className="text-[10px] text-muted-foreground">Locked (70%)</p>
+                <p className="text-[10px] text-muted-foreground">Locked ({config.lock_percentage}%)</p>
               </div>
             </div>
           </div>
@@ -266,7 +295,7 @@ const AirdropScreen = () => {
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-4">
-          <AirdropTimeline />
+          <AirdropTimeline phases={config.phases} lockPercentage={config.lock_percentage} />
         </TabsContent>
       </Tabs>
     </div>
