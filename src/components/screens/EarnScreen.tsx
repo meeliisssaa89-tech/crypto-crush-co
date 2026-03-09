@@ -27,16 +27,19 @@ interface TaskRow {
   id: string; title: string; description: string | null; reward_amount: number;
   type: string; status: string; is_daily: boolean; url: string | null;
   verification_type: string; cooldown_seconds: number;
+  reward_type: string; token_reward_amount: number;
 }
 
 interface ShortlinkRow {
   id: string; title: string; url: string; reward_amount: number;
   timer_seconds: number; network: string;
+  reward_type: string; token_reward_amount: number;
 }
 
 interface AdRow {
   id: string; title: string; ad_type: string; reward_amount: number; cooldown_seconds: number;
   ad_zone_id: string | null; ads_per_click: number;
+  reward_type: string; token_reward_amount: number;
 }
 
 // Monetag SDK function type
