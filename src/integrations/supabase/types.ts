@@ -45,6 +45,7 @@ export type Database = {
         Row: {
           ad_type: string
           ad_zone_id: string | null
+          ads_per_click: number
           cooldown_seconds: number
           created_at: string
           id: string
@@ -56,6 +57,7 @@ export type Database = {
         Insert: {
           ad_type?: string
           ad_zone_id?: string | null
+          ads_per_click?: number
           cooldown_seconds?: number
           created_at?: string
           id?: string
@@ -67,6 +69,7 @@ export type Database = {
         Update: {
           ad_type?: string
           ad_zone_id?: string | null
+          ads_per_click?: number
           cooldown_seconds?: number
           created_at?: string
           id?: string
