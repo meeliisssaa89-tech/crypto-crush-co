@@ -2,16 +2,18 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Users, ListChecks, ArrowDownUp, BarChart3, Settings, Shield,
-  Search, Ban, Edit3, Check, X, DollarSign, TrendingUp, Activity,
+  Search, Edit3, Check, X, DollarSign, TrendingUp, Activity,
   Coins, Globe, Bell, ChevronRight, Plus, Trash2, Eye, Loader2, Send, MessageSquare,
-  Gamepad2, Wallet, Rocket, BarChart
+  Gamepad2, Wallet, Rocket, BarChart, Image, Link2
 } from "lucide-react";
+import AdminLogin from "@/components/admin/AdminLogin";
 import GameSettings from "@/components/admin/GameSettings";
 import EarnSettings from "@/components/admin/EarnSettings";
 import AirdropSettings from "@/components/admin/AirdropSettings";
 import TickerSettings from "@/components/admin/TickerSettings";
 import WalletSettings from "@/components/admin/WalletSettings";
 import WithdrawalSettings from "@/components/admin/WithdrawalSettings";
+import UserManagement from "@/components/admin/UserManagement";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,50 +26,64 @@ import { toast } from "sonner";
 
 const AdminDashboard = () => {
   const { user } = useAuth();
+  const [authenticated, setAuthenticated] = useState(false);
+  const [checkingRole, setCheckingRole] = useState(true);
   const [activeSection, setActiveSection] = useState("overview");
-  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
   // Data states
-  const [users, setUsers] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
-  const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [stats, setStats] = useState({ totalUsers: 0, totalTasks: 0, pendingWithdrawals: 0, totalTransactions: 0 });
 
   // Modals
   const [editTaskModal, setEditTaskModal] = useState<any>(null);
   const [createTaskModal, setCreateTaskModal] = useState(false);
-  const [broadcastModal, setBroadcastModal] = useState(false);
-  const [broadcastMessage, setBroadcastMessage] = useState("");
   const [maintenanceMode, setMaintenanceMode] = useState(false);
+
+  // Broadcast
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [broadcastPhotoUrl, setBroadcastPhotoUrl] = useState("");
+  const [broadcastButtonText, setBroadcastButtonText] = useState("");
+  const [broadcastButtonUrl, setBroadcastButtonUrl] = useState("");
+  const [broadcastChannelId, setBroadcastChannelId] = useState("");
+  const [broadcastToUsers, setBroadcastToUsers] = useState(true);
+  const [broadcastToChannel, setBroadcastToChannel] = useState(false);
+  const [sendingBroadcast, setSendingBroadcast] = useState(false);
+
+  // Withdrawal channel config
+  const [withdrawalChannelId, setWithdrawalChannelId] = useState("");
 
   // New task form
   const [newTask, setNewTask] = useState({ title: "", reward_amount: 50, type: "social", url: "", description: "" });
 
+  // Check admin role on mount
   useEffect(() => {
-    fetchAllData();
-  }, []);
+    const checkAdmin = async () => {
+      if (!user) {
+        setCheckingRole(false);
+        return;
+      }
+      const { data } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
+      if (data) setAuthenticated(true);
+      setCheckingRole(false);
+    };
+    checkAdmin();
+  }, [user]);
+
+  useEffect(() => {
+    if (authenticated) fetchAllData();
+  }, [authenticated]);
 
   const fetchAllData = async () => {
     setLoading(true);
-    await Promise.all([fetchUsers(), fetchTasks(), fetchWithdrawals(), fetchSettings(), fetchStats()]);
+    await Promise.all([fetchTasks(), fetchSettings(), fetchStats()]);
     setLoading(false);
-  };
-
-  const fetchUsers = async () => {
-    const { data } = await supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(50);
-    if (data) setUsers(data);
   };
 
   const fetchTasks = async () => {
     const { data } = await supabase.from("tasks").select("*").order("created_at", { ascending: false });
     if (data) setTasks(data);
-  };
-
-  const fetchWithdrawals = async () => {
-    const { data } = await supabase.from("withdrawal_requests").select("*").order("created_at", { ascending: false }).limit(50);
-    if (data) setWithdrawals(data);
   };
 
   const fetchSettings = async () => {
@@ -77,6 +93,9 @@ const AdminDashboard = () => {
       data.forEach(item => { s[item.key] = item.value; });
       setSettings(s);
       setMaintenanceMode(s.maintenance_mode === true);
+      if (s.withdrawal_channel_id?.channel_id) {
+        setWithdrawalChannelId(s.withdrawal_channel_id.channel_id);
+      }
     }
   };
 
@@ -121,22 +140,11 @@ const AdminDashboard = () => {
   };
 
   const deleteTask = async (taskId: string) => {
+    if (!confirm("Delete this task?")) return;
     const { error } = await supabase.from("tasks").delete().eq("id", taskId);
     if (error) { toast.error(error.message); return; }
     toast.success("Task deleted!");
     fetchTasks();
-  };
-
-  // Withdrawal actions
-  const processWithdrawal = async (id: string, status: "approved" | "rejected", note?: string) => {
-    const { error } = await supabase.from("withdrawal_requests").update({
-      status,
-      admin_note: note || null,
-      processed_at: new Date().toISOString(),
-    }).eq("id", id);
-    if (error) { toast.error(error.message); return; }
-    toast.success(`Withdrawal ${status}!`);
-    fetchWithdrawals();
   };
 
   // Settings
@@ -150,17 +158,33 @@ const AdminDashboard = () => {
   // Broadcast message
   const sendBroadcast = async () => {
     if (!broadcastMessage.trim()) { toast.error("Message required"); return; }
+    setSendingBroadcast(true);
     try {
-      const { error } = await supabase.functions.invoke("send-telegram-message", {
-        body: { message: broadcastMessage, broadcast: true },
-      });
+      const body: any = {
+        message: broadcastMessage,
+        parse_mode: "HTML",
+      };
+
+      if (broadcastPhotoUrl.trim()) body.photo_url = broadcastPhotoUrl.trim();
+
+      if (broadcastButtonText.trim() && broadcastButtonUrl.trim()) {
+        body.inline_keyboard = [[{ text: broadcastButtonText, url: broadcastButtonUrl }]];
+      }
+
+      if (broadcastToUsers) body.broadcast = true;
+      if (broadcastToChannel && broadcastChannelId.trim()) body.channel_id = broadcastChannelId.trim();
+
+      const { error } = await supabase.functions.invoke("send-telegram-message", { body });
       if (error) throw error;
-      toast.success("Broadcast sent!");
-      setBroadcastModal(false);
+      toast.success("تم إرسال البث بنجاح!");
       setBroadcastMessage("");
+      setBroadcastPhotoUrl("");
+      setBroadcastButtonText("");
+      setBroadcastButtonUrl("");
     } catch {
-      toast.error("Failed to send broadcast. Make sure the bot is configured.");
+      toast.error("فشل إرسال البث. تأكد من إعدادات البوت.");
     }
+    setSendingBroadcast(false);
   };
 
   const sections = [
@@ -177,8 +201,17 @@ const AdminDashboard = () => {
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
-  const pendingWithdrawals = withdrawals.filter(w => w.status === "pending");
-  const pendingTotal = pendingWithdrawals.reduce((s, w) => s + Number(w.amount), 0);
+  if (checkingRole) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return <AdminLogin onAuthenticated={() => setAuthenticated(true)} />;
+  }
 
   if (loading) {
     return (
@@ -196,7 +229,15 @@ const AdminDashboard = () => {
           <Shield className="h-5 w-5 text-primary" />
           <h1 className="text-lg font-display font-bold text-foreground">Admin Panel</h1>
         </div>
-        <Badge className="bg-earn/20 text-earn border-0 text-[10px]">Live</Badge>
+        <div className="flex items-center gap-2">
+          <Badge className="bg-earn/20 text-earn border-0 text-[10px]">Live</Badge>
+          <button
+            onClick={async () => { await supabase.auth.signOut(); setAuthenticated(false); }}
+            className="text-xs text-muted-foreground hover:text-destructive"
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Section Nav */}
@@ -226,7 +267,7 @@ const AdminDashboard = () => {
                 { label: "Total Users", value: stats.totalUsers.toLocaleString(), icon: Users, color: "text-primary" },
                 { label: "Active Tasks", value: stats.totalTasks.toString(), icon: ListChecks, color: "text-earn" },
                 { label: "Pending Withdrawals", value: stats.pendingWithdrawals.toString(), icon: ArrowDownUp, color: "text-warning" },
-                { label: "Pending Total", value: `$${pendingTotal.toFixed(0)}`, icon: DollarSign, color: "text-accent" },
+                { label: "Total Tasks", value: tasks.length.toString(), icon: DollarSign, color: "text-accent" },
               ].map((stat) => (
                 <div key={stat.label} className="glass rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
@@ -241,30 +282,7 @@ const AdminDashboard = () => {
         )}
 
         {/* USERS */}
-        {activeSection === "users" && (
-          <div className="space-y-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search users..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 bg-secondary/50" />
-            </div>
-            {users
-              .filter((u) => (u.username || "").toLowerCase().includes(searchQuery.toLowerCase()))
-              .map((u) => (
-                <div key={u.id} className="glass rounded-xl p-3.5 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center text-white font-bold text-sm">
-                    {(u.username || "?")[0].toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{u.username || "anonymous"}</p>
-                    <p className="text-[10px] text-muted-foreground">Lv.{u.level} • {u.xp} XP • {new Date(u.created_at).toLocaleDateString()}</p>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-xs font-semibold text-foreground">{u.streak_days}🔥</span>
-                  </div>
-                </div>
-              ))}
-          </div>
-        )}
+        {activeSection === "users" && <UserManagement />}
 
         {/* TASKS */}
         {activeSection === "tasks" && (
@@ -385,20 +403,85 @@ const AdminDashboard = () => {
             <div className="glass rounded-xl p-4">
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-primary" />
-                Send Broadcast Message
+                إرسال رسالة بث
               </h3>
-              <p className="text-xs text-muted-foreground mb-3">
-                Send a message to all users via Telegram bot. Requires bot token configuration.
-              </p>
-              <Textarea
-                placeholder="Type your broadcast message..."
-                value={broadcastMessage}
-                onChange={(e) => setBroadcastMessage(e.target.value)}
-                className="bg-secondary/50 min-h-[100px] mb-3"
-              />
-              <Button onClick={sendBroadcast} className="w-full gradient-primary text-white border-0 gap-2">
-                <Send className="h-4 w-4" /> Send to All Users
-              </Button>
+
+              <div className="space-y-3">
+                {/* Message */}
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">نص الرسالة (HTML)</label>
+                  <Textarea
+                    placeholder="اكتب رسالة البث... يدعم HTML مثل <b>bold</b>"
+                    value={broadcastMessage}
+                    onChange={(e) => setBroadcastMessage(e.target.value)}
+                    className="bg-secondary/50 min-h-[100px]"
+                  />
+                </div>
+
+                {/* Photo URL */}
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block flex items-center gap-1">
+                    <Image className="h-3 w-3" /> رابط الصورة (اختياري)
+                  </label>
+                  <Input
+                    placeholder="https://example.com/image.jpg"
+                    value={broadcastPhotoUrl}
+                    onChange={(e) => setBroadcastPhotoUrl(e.target.value)}
+                    className="bg-secondary/50"
+                  />
+                </div>
+
+                {/* Inline Button */}
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block flex items-center gap-1">
+                    <Link2 className="h-3 w-3" /> زر عائم (اختياري)
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      placeholder="نص الزر"
+                      value={broadcastButtonText}
+                      onChange={(e) => setBroadcastButtonText(e.target.value)}
+                      className="bg-secondary/50"
+                    />
+                    <Input
+                      placeholder="رابط الزر"
+                      value={broadcastButtonUrl}
+                      onChange={(e) => setBroadcastButtonUrl(e.target.value)}
+                      className="bg-secondary/50"
+                    />
+                  </div>
+                </div>
+
+                {/* Target */}
+                <div className="glass rounded-lg p-3 space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium">الهدف</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-foreground">إرسال لجميع المستخدمين</span>
+                    <Switch checked={broadcastToUsers} onCheckedChange={setBroadcastToUsers} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-foreground">إرسال لقناة/مجموعة</span>
+                    <Switch checked={broadcastToChannel} onCheckedChange={setBroadcastToChannel} />
+                  </div>
+                  {broadcastToChannel && (
+                    <Input
+                      placeholder="Channel ID (e.g. @channel or -100...)"
+                      value={broadcastChannelId}
+                      onChange={(e) => setBroadcastChannelId(e.target.value)}
+                      className="bg-secondary/50 text-xs"
+                    />
+                  )}
+                </div>
+
+                <Button
+                  onClick={sendBroadcast}
+                  disabled={sendingBroadcast || !broadcastMessage.trim()}
+                  className="w-full gradient-primary text-white border-0 gap-2"
+                >
+                  {sendingBroadcast ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  إرسال البث
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -406,6 +489,32 @@ const AdminDashboard = () => {
         {/* SETTINGS */}
         {activeSection === "settings" && (
           <div className="space-y-4">
+            {/* Withdrawal Channel */}
+            <div className="glass rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <Bell className="h-4 w-4 text-primary" />
+                إشعارات السحب
+              </h3>
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">أدخل معرّف القناة/المجموعة لإرسال إشعارات السحب</p>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="@channel أو -100..."
+                    value={withdrawalChannelId}
+                    onChange={(e) => setWithdrawalChannelId(e.target.value)}
+                    className="bg-secondary/50 flex-1"
+                  />
+                  <Button
+                    onClick={() => saveSetting("withdrawal_channel_id", { channel_id: withdrawalChannelId })}
+                    className="gradient-primary text-white border-0"
+                    size="sm"
+                  >
+                    حفظ
+                  </Button>
+                </div>
+              </div>
+            </div>
+
             <div className="glass rounded-xl p-4">
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                 <Coins className="h-4 w-4 text-primary" />
@@ -463,13 +572,6 @@ const AdminDashboard = () => {
                       saveSetting("maintenance_mode", v);
                     }}
                   />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-foreground">Anti-Fraud Detection</p>
-                    <p className="text-[10px] text-muted-foreground">IP & device fingerprint checks</p>
-                  </div>
-                  <Switch defaultChecked />
                 </div>
               </div>
             </div>
