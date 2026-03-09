@@ -293,7 +293,15 @@ const WalletScreen = () => {
               </div>
             </div>
             <div className="glass rounded-lg p-3">
-              <div className="flex justify-between text-xs"><span className="text-muted-foreground">Rate</span><span className="text-foreground">1 EARN = $0.10</span></div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Rate</span>
+                <span className="text-foreground">
+                  {(() => {
+                    const earnCurr = currencies.find(c => c.symbol === "EARN");
+                    return earnCurr ? `1 EARN = $${Number(earnCurr.exchange_rate).toFixed(4)}` : "Loading...";
+                  })()}
+                </span>
+              </div>
             </div>
             <Button className="w-full gradient-primary text-white border-0">Swap</Button>
           </div>
