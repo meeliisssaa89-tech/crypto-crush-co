@@ -383,6 +383,21 @@ const EarnSettings = () => {
       {/* ═══════════ ADS TAB ═══════════ */}
       {activeTab === "ads" && (
         <div className="space-y-3">
+          {/* Ad Statistics */}
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: "Total Views", value: adStats.totalViews.toLocaleString(), icon: BarChart3, color: "text-primary" },
+              { label: "Today", value: adStats.todayViews.toLocaleString(), icon: TrendingUp, color: "text-earn" },
+              { label: "Rewards Paid", value: adStats.totalRewards.toLocaleString(), icon: Coins, color: "text-warning" },
+            ].map((s) => (
+              <div key={s.label} className="glass rounded-xl p-3 text-center">
+                <s.icon className={`h-4 w-4 mx-auto mb-1 ${s.color}`} />
+                <p className="text-lg font-display font-bold text-foreground">{s.value}</p>
+                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{s.label}</p>
+              </div>
+            ))}
+          </div>
+
           <Button onClick={() => openAdModal()} className="w-full gradient-earn text-white border-0 gap-2">
             <Plus className="h-4 w-4" /> Add New Ad
           </Button>
