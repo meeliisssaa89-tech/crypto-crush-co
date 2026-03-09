@@ -41,6 +41,39 @@ export type Database = {
         }
         Relationships: []
       }
+      ads: {
+        Row: {
+          ad_type: string
+          cooldown_seconds: number
+          created_at: string
+          id: string
+          is_active: boolean
+          reward_amount: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          ad_type?: string
+          cooldown_seconds?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          reward_amount?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          ad_type?: string
+          cooldown_seconds?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          reward_amount?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       airdrops: {
         Row: {
           created_at: string
@@ -203,6 +236,45 @@ export type Database = {
         }
         Relationships: []
       }
+      shortlinks: {
+        Row: {
+          created_at: string
+          daily_limit: number | null
+          id: string
+          is_active: boolean
+          network: string
+          reward_amount: number
+          timer_seconds: number
+          title: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          daily_limit?: number | null
+          id?: string
+          is_active?: boolean
+          network?: string
+          reward_amount?: number
+          timer_seconds?: number
+          title: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          daily_limit?: number | null
+          id?: string
+          is_active?: boolean
+          network?: string
+          reward_amount?: number
+          timer_seconds?: number
+          title?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           created_at: string
@@ -306,6 +378,38 @@ export type Database = {
           },
         ]
       }
+      user_ad_views: {
+        Row: {
+          ad_id: string
+          id: string
+          reward_amount: number
+          user_id: string
+          viewed_at: string
+        }
+        Insert: {
+          ad_id: string
+          id?: string
+          reward_amount?: number
+          user_id: string
+          viewed_at?: string
+        }
+        Update: {
+          ad_id?: string
+          id?: string
+          reward_amount?: number
+          user_id?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_ad_views_ad_id_fkey"
+            columns: ["ad_id"]
+            isOneToOne: false
+            referencedRelation: "ads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_balances: {
         Row: {
           balance: number
@@ -352,6 +456,38 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_shortlinks: {
+        Row: {
+          completed_at: string
+          id: string
+          reward_amount: number
+          shortlink_id: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          reward_amount?: number
+          shortlink_id: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          reward_amount?: number
+          shortlink_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_shortlinks_shortlink_id_fkey"
+            columns: ["shortlink_id"]
+            isOneToOne: false
+            referencedRelation: "shortlinks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_tasks: {
         Row: {
