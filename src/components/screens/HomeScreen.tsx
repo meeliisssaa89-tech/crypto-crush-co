@@ -23,6 +23,7 @@ const HomeScreen = () => {
   const [showAllActivity, setShowAllActivity] = useState(false);
   const [limitedOfferTimer, setLimitedOfferTimer] = useState(9252);
   const [completedToday, setCompletedToday] = useState(0);
+  const [tickerConfig, setTickerConfig] = useState({ points_usd_rate: 0.001, ticker_enabled: true });
 
   useEffect(() => {
     if (user) {
