@@ -254,15 +254,15 @@ const WalletScreen = () => {
             <div className="glass rounded-lg p-3 space-y-1">
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Rate</span>
-                <span className="text-foreground">1 XP = ${tickerConfig.points_usd_rate}</span>
+                <span className="text-foreground">1 XP = {tickerConfig.xp_to_ton_rate} TON</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Fee (2%)</span>
+                <span className="text-muted-foreground">Fee ({feePercent}%)</span>
                 <span className="text-foreground">{feeAmount.toFixed(2)} XP</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Min withdrawal</span>
-                <span className="text-foreground">100 XP</span>
+                <span className="text-foreground">{tickerConfig.min_withdrawal_xp} XP</span>
               </div>
               <div className="h-px bg-border my-1" />
               <div className="flex justify-between text-xs">
