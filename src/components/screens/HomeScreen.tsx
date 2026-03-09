@@ -50,7 +50,7 @@ const HomeScreen = () => {
 
   const fetchProfile = async () => {
     if (!user) return;
-    const { data } = await supabase.from("profiles").select("*").eq("user_id", user.id).single();
+    const { data } = await supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
     if (data) setProfile(data);
   };
 
