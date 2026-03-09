@@ -447,7 +447,7 @@ const AdminDashboard = () => {
                   <Input defaultValue="0.10" className="w-24 h-8 text-xs bg-secondary/50 text-right" />
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Coins → Points Rate</span>
+                  <span className="text-xs text-muted-foreground">XP → Token Rate</span>
                   <Input defaultValue="1:2" className="w-20 h-8 text-xs bg-secondary/50 text-right" />
                 </div>
               </div>
