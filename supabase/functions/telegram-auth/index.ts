@@ -98,12 +98,13 @@ Deno.serve(async (req) => {
     if (signInData?.session) {
       await supabase
         .from("profiles")
-        .update({
+        .upsert({
+          user_id: signInData.user.id,
           telegram_id: telegramId,
           username: tgUser.username || tgUser.first_name || null,
           avatar_url: tgUser.photo_url || null,
-        })
-        .eq("user_id", signInData.user.id);
+          referral_code: `tg${telegramId}`.slice(0, 8),
+        }, { onConflict: "user_id" });
 
       return new Response(
         JSON.stringify({
