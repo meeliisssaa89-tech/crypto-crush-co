@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
-  Star, Box, Plus, Trash2, Edit3, Loader2, Upload, Image, Volume2, Sparkles, Settings
+  Star, Box, Plus, Trash2, Edit3, Loader2, Upload, Image, Volume2, Sparkles, Settings, Gift
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
