@@ -142,6 +142,8 @@ const EarnSettings = () => {
       cooldown_seconds: Number(taskForm.cooldown_seconds) || 0,
       is_limited: taskForm.is_limited,
       max_completions: taskForm.is_limited ? Number(taskForm.max_completions) : null,
+      reward_type: taskForm.reward_type,
+      token_reward_amount: taskForm.reward_type === "xp_and_token" ? Number(taskForm.token_reward_amount) : 0,
     };
 
     if (isCreating || !taskModal?.id) {
