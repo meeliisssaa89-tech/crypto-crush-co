@@ -194,6 +194,8 @@ const EarnSettings = () => {
       timer_seconds: Number(slForm.timer_seconds),
       network: slForm.network,
       daily_limit: Number(slForm.daily_limit) || null,
+      reward_type: slForm.reward_type,
+      token_reward_amount: slForm.reward_type === "xp_and_token" ? Number(slForm.token_reward_amount) : 0,
     };
 
     if (isCreating || !shortlinkModal?.id) {
