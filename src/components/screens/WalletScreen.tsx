@@ -55,8 +55,8 @@ const WalletScreen = () => {
     setLoading(true);
     const [{ data: txs }, { data: prof }, { data: airdrop }] = await Promise.all([
       supabase.from("transactions").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
-      supabase.from("profiles").select("*").eq("user_id", user.id).single(),
-      supabase.from("airdrops").select("*").eq("user_id", user.id).single(),
+      supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
+      supabase.from("airdrops").select("*").eq("user_id", user.id).maybeSingle(),
     ]);
     if (txs) setTransactions(txs);
     if (prof) setProfile(prof);

@@ -62,7 +62,7 @@ const DailyBonus = ({ open, onOpenChange }: DailyBonusProps) => {
     if (!user) return;
 
     const [{ data: profileData, error: profileError }, { data: settingsData, error: settingsError }] = await Promise.all([
-      supabase.from("profiles").select("streak_days, last_streak_date, xp").eq("user_id", user.id).single(),
+      supabase.from("profiles").select("streak_days, last_streak_date, xp, referral_code").eq("user_id", user.id).maybeSingle(),
       supabase
         .from("app_settings")
         .select("key, value")
@@ -130,14 +130,18 @@ const DailyBonus = ({ open, onOpenChange }: DailyBonusProps) => {
 
     const reward = dailyRewards[Math.min(newStreak - 1, 6)]?.reward ?? DEFAULT_REWARDS[Math.min(newStreak - 1, 6)];
 
+    // Update streak info
     const { error: updateError } = await supabase
       .from("profiles")
-      .update({
+      .upsert({
+        user_id: user.id,
         streak_days: newStreak,
         last_streak_date: today.toISOString().split("T")[0],
-        xp: (profile?.xp ?? 0) + reward,
-      })
-      .eq("user_id", user.id);
+        referral_code: profile?.referral_code || Math.random().toString(36).slice(2, 10),
+      }, { onConflict: "user_id" });
+
+    // Add XP via safe function
+    await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: reward });
 
     if (updateError) {
       toast.error(updateError.message);

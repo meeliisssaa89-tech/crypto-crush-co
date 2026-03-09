@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS airdrops_user_id_key ON public.airdrops (user_id);

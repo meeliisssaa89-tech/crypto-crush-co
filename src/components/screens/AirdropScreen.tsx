@@ -83,7 +83,7 @@ const AirdropScreen = () => {
 
   const fetchAirdrop = async () => {
     if (!user) return;
-    let { data: ad } = await supabase.from("airdrops").select("*").eq("user_id", user.id).single();
+    let { data: ad } = await supabase.from("airdrops").select("*").eq("user_id", user.id).maybeSingle();
     if (!ad) {
       const { data: txs } = await supabase.from("transactions").select("amount").eq("user_id", user.id).gt("amount", 0);
       const totalEarned = txs?.reduce((s, t) => s + Number(t.amount), 0) ?? 0;
@@ -130,7 +130,7 @@ const AirdropScreen = () => {
         setUserRank(myIndex + 1);
       } else {
         // Count how many have more XP than current user
-        const { data: myProfile } = await supabase.from("profiles").select("xp").eq("user_id", user.id).single();
+        const { data: myProfile } = await supabase.from("profiles").select("xp").eq("user_id", user.id).maybeSingle();
         if (myProfile) {
           const { count: above } = await supabase
             .from("profiles")
