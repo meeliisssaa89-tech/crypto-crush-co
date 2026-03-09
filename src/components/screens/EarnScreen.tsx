@@ -217,6 +217,21 @@ const EarnScreen = () => {
     });
     if (taskError) { toast.error("Failed to complete task"); setCompleting(null); return; }
 
+    // Add XP to profile
+    const { data: currentProfile } = await supabase.from("profiles").select("xp").eq("user_id", user.id).single();
+    const currentXp = currentProfile?.xp ?? 0;
+    await supabase.from("profiles").update({ xp: currentXp + task.reward_amount }).eq("user_id", user.id);
+
+    // Add token if reward_type includes token
+    if (task.reward_type === "xp_and_token" && task.token_reward_amount > 0) {
+      const { data: airdropRow } = await supabase.from("airdrops").select("tokens_earned").eq("user_id", user.id).single();
+      if (airdropRow) {
+        await supabase.from("airdrops").update({ tokens_earned: (airdropRow.tokens_earned ?? 0) + task.token_reward_amount }).eq("user_id", user.id);
+      } else {
+        await supabase.from("airdrops").insert({ user_id: user.id, tokens_earned: task.token_reward_amount });
+      }
+    }
+
     await supabase.from("transactions").insert({
       user_id: user.id, type: "task_reward", amount: task.reward_amount,
       description: `Task: ${task.title}`, reference_id: task.id,
@@ -248,6 +263,22 @@ const EarnScreen = () => {
     await supabase.from("user_shortlinks").insert({
       user_id: user.id, shortlink_id: link.id, reward_amount: link.reward_amount,
     });
+
+    // Add XP to profile
+    const { data: currentProfile } = await supabase.from("profiles").select("xp").eq("user_id", user.id).single();
+    const currentXp = currentProfile?.xp ?? 0;
+    await supabase.from("profiles").update({ xp: currentXp + link.reward_amount }).eq("user_id", user.id);
+
+    // Add token if applicable
+    if (link.reward_type === "xp_and_token" && link.token_reward_amount > 0) {
+      const { data: airdropRow } = await supabase.from("airdrops").select("tokens_earned").eq("user_id", user.id).single();
+      if (airdropRow) {
+        await supabase.from("airdrops").update({ tokens_earned: (airdropRow.tokens_earned ?? 0) + link.token_reward_amount }).eq("user_id", user.id);
+      } else {
+        await supabase.from("airdrops").insert({ user_id: user.id, tokens_earned: link.token_reward_amount });
+      }
+    }
+
     await supabase.from("transactions").insert({
       user_id: user.id, type: "shortlink", amount: link.reward_amount, description: `Shortlink: ${link.title}`,
     });
@@ -307,6 +338,22 @@ const EarnScreen = () => {
     await supabase.from("user_ad_views").insert({
       user_id: user.id, ad_id: ad.id, reward_amount: ad.reward_amount,
     });
+
+    // Add XP to profile
+    const { data: currentProfile } = await supabase.from("profiles").select("xp").eq("user_id", user.id).single();
+    const currentXp = currentProfile?.xp ?? 0;
+    await supabase.from("profiles").update({ xp: currentXp + ad.reward_amount }).eq("user_id", user.id);
+
+    // Add token if applicable
+    if (ad.reward_type === "xp_and_token" && ad.token_reward_amount > 0) {
+      const { data: airdropRow } = await supabase.from("airdrops").select("tokens_earned").eq("user_id", user.id).single();
+      if (airdropRow) {
+        await supabase.from("airdrops").update({ tokens_earned: (airdropRow.tokens_earned ?? 0) + ad.token_reward_amount }).eq("user_id", user.id);
+      } else {
+        await supabase.from("airdrops").insert({ user_id: user.id, tokens_earned: ad.token_reward_amount });
+      }
+    }
+
     await supabase.from("transactions").insert({
       user_id: user.id, type: "ad_reward", amount: ad.reward_amount, description: `Ad: ${ad.title}`,
     });
