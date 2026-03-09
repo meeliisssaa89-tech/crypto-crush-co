@@ -67,7 +67,8 @@ const GameSettings = () => {
       supabase.from("spin_prizes").select("*").order("sort_order"),
       supabase.from("box_prizes").select("*").order("created_at"),
       supabase.from("app_settings").select("key, value").in("key", [
-        "daily_spin_limit", "daily_box_limit", "box_unlock_method", "box_tasks_required"
+        "daily_spin_limit", "daily_box_limit", "box_unlock_method", "box_tasks_required",
+        "daily_bonus_enabled", "daily_bonus_rewards"
       ]),
     ]);
     if (sp) setSpinPrizes(sp);
