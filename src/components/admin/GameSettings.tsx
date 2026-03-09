@@ -159,7 +159,22 @@ const GameSettings = () => {
   };
 
   const saveSetting = async (key: string, value: unknown, successMessage?: string) => {
-    const { error } = await supabase.from("app_settings").upsert({ key, value }, { onConflict: "key" });
+    const { data: existing, error: fetchError } = await supabase
+      .from("app_settings")
+      .select("id")
+      .eq("key", key)
+      .maybeSingle();
+
+    if (fetchError) {
+      toast.error(fetchError.message);
+      return false;
+    }
+
+    const operation = existing
+      ? supabase.from("app_settings").update({ value }).eq("key", key)
+      : supabase.from("app_settings").insert({ key, value: value as any });
+
+    const { error } = await operation;
     if (error) {
       toast.error(error.message);
       return false;
