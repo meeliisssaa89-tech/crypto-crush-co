@@ -27,16 +27,19 @@ interface TaskRow {
   id: string; title: string; description: string | null; reward_amount: number;
   type: string; status: string; is_daily: boolean; url: string | null;
   verification_type: string; cooldown_seconds: number;
+  reward_type: string; token_reward_amount: number;
 }
 
 interface ShortlinkRow {
   id: string; title: string; url: string; reward_amount: number;
   timer_seconds: number; network: string;
+  reward_type: string; token_reward_amount: number;
 }
 
 interface AdRow {
   id: string; title: string; ad_type: string; reward_amount: number; cooldown_seconds: number;
   ad_zone_id: string | null; ads_per_click: number;
+  reward_type: string; token_reward_amount: number;
 }
 
 // Monetag SDK function type
@@ -95,7 +98,7 @@ const EarnScreen = () => {
   const fetchTasks = async () => {
     const { data: taskData } = await supabase
       .from("tasks")
-      .select("id, title, description, reward_amount, type, status, is_daily, url, verification_type, cooldown_seconds")
+      .select("id, title, description, reward_amount, type, status, is_daily, url, verification_type, cooldown_seconds, reward_type, token_reward_amount")
       .eq("status", "active");
     if (taskData) setTasks(taskData);
 
@@ -127,7 +130,7 @@ const EarnScreen = () => {
 
   const fetchShortlinks = async () => {
     const { data } = await supabase.from("shortlinks")
-      .select("id, title, url, reward_amount, timer_seconds, network")
+      .select("id, title, url, reward_amount, timer_seconds, network, reward_type, token_reward_amount")
       .eq("is_active", true);
     if (data) setShortlinks(data);
 
@@ -146,7 +149,7 @@ const EarnScreen = () => {
 
   const fetchAds = async () => {
     const { data } = await supabase.from("ads")
-      .select("id, title, ad_type, reward_amount, cooldown_seconds, ad_zone_id, ads_per_click")
+      .select("id, title, ad_type, reward_amount, cooldown_seconds, ad_zone_id, ads_per_click, reward_type, token_reward_amount")
       .eq("is_active", true);
     if (data) setAds(data);
 
@@ -225,7 +228,10 @@ const EarnScreen = () => {
     }
     
     hapticFeedback.notification("success");
-    toast.success(`+${task.reward_amount} coins earned!`);
+    const rewardMsg = task.reward_type === "xp_and_token" 
+      ? `+${task.reward_amount} XP & +${task.token_reward_amount} TKN earned!`
+      : `+${task.reward_amount} XP earned!`;
+    toast.success(rewardMsg);
     setCompleting(null);
     setCountdowns(prev => { const n = { ...prev }; delete n[`task_${task.id}`]; return n; });
   };
@@ -249,7 +255,10 @@ const EarnScreen = () => {
     setCompletedShortlinks(prev => new Set(prev).add(link.id));
     setShortlinkEarnings(prev => prev + link.reward_amount);
     hapticFeedback.notification("success");
-    toast.success(`+${link.reward_amount} coins earned!`);
+    const rewardMsg = link.reward_type === "xp_and_token"
+      ? `+${link.reward_amount} XP & +${link.token_reward_amount} TKN earned!`
+      : `+${link.reward_amount} XP earned!`;
+    toast.success(rewardMsg);
     setCompleting(null);
     setCountdowns(prev => { const n = { ...prev }; delete n[`sl_${link.id}`]; return n; });
   };
@@ -305,7 +314,10 @@ const EarnScreen = () => {
     setAdCooldowns(prev => ({ ...prev, [ad.id]: new Date() }));
     setCountdowns(prev => ({ ...prev, [cdKey]: ad.cooldown_seconds }));
     hapticFeedback.notification("success");
-    toast.success(`+${ad.reward_amount} coins earned! (${totalAds} ads watched)`);
+    const rewardMsg = ad.reward_type === "xp_and_token"
+      ? `+${ad.reward_amount} XP & +${ad.token_reward_amount} TKN earned! (${totalAds} ads watched)`
+      : `+${ad.reward_amount} XP earned! (${totalAds} ads watched)`;
+    toast.success(rewardMsg);
     setCompleting(null);
     setCountdowns(prev => { const n = { ...prev }; delete n[`watching_${ad.id}`]; return n; });
   };
@@ -336,7 +348,7 @@ const EarnScreen = () => {
       {/* Header */}
       <div className="mb-5">
         <h1 className="text-xl font-display font-bold text-foreground">Earn</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Complete tasks & watch ads to earn coins</p>
+        <p className="text-xs text-muted-foreground mt-0.5">Complete tasks & watch ads to earn XP</p>
         <div className="flex items-center gap-3 mt-3">
           <div className="glass rounded-xl px-3 py-2 flex-1">
             <p className="text-[10px] text-muted-foreground">Tasks Done</p>
@@ -454,7 +466,10 @@ const EarnScreen = () => {
                       {/* Reward */}
                       <div className="text-right shrink-0">
                         <p className="text-sm font-bold text-earn">+{task.reward_amount}</p>
-                        <p className="text-[8px] text-muted-foreground uppercase">coins</p>
+                        <p className="text-[8px] text-muted-foreground uppercase">XP</p>
+                        {task.reward_type === "xp_and_token" && (
+                          <p className="text-[9px] font-semibold text-primary">+{task.token_reward_amount} TKN</p>
+                        )}
                       </div>
                     </button>
                   </motion.div>
@@ -478,7 +493,7 @@ const EarnScreen = () => {
               <div className="glass rounded-2xl p-3">
                 <div className="flex justify-between items-center">
                   <span className="text-[10px] text-muted-foreground">Today's progress</span>
-                  <span className="text-xs font-bold text-earn">+{shortlinkEarnings} coins</span>
+                  <span className="text-xs font-bold text-earn">+{shortlinkEarnings} XP</span>
                 </div>
                 <Progress value={shortlinks.length > 0 ? (completedShortlinks.size / shortlinks.length) * 100 : 0} className="h-1.5 mt-2 bg-muted" />
               </div>
@@ -526,7 +541,10 @@ const EarnScreen = () => {
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-sm font-bold text-earn">+{link.reward_amount}</p>
-                        <p className="text-[8px] text-muted-foreground uppercase">coins</p>
+                        <p className="text-[8px] text-muted-foreground uppercase">XP</p>
+                        {link.reward_type === "xp_and_token" && (
+                          <p className="text-[9px] font-semibold text-primary">+{link.token_reward_amount} TKN</p>
+                        )}
                       </div>
                     </button>
                   </motion.div>
@@ -592,7 +610,10 @@ const EarnScreen = () => {
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold text-earn">+{ad.reward_amount}</p>
-                      <p className="text-[8px] text-muted-foreground uppercase">coins</p>
+                      <p className="text-[8px] text-muted-foreground uppercase">XP</p>
+                      {ad.reward_type === "xp_and_token" && (
+                        <p className="text-[9px] font-semibold text-primary">+{ad.token_reward_amount} TKN</p>
+                      )}
                     </div>
                   </button>
                 </motion.div>

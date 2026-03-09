@@ -267,7 +267,7 @@ const AirdropScreen = () => {
             </h3>
             <div className="space-y-2.5">
               {[
-                { icon: CheckCircle2, label: "Complete daily tasks", desc: "Earn coins & boost ranking", color: "text-earn" },
+                { icon: CheckCircle2, label: "Complete daily tasks", desc: "Earn XP & boost ranking", color: "text-earn" },
                 { icon: Users, label: "Invite friends", desc: "Get 10% of referral earnings", color: "text-accent" },
                 { icon: Star, label: "Maintain login streak", desc: "Bonus multiplier on rewards", color: "text-warning" },
                 { icon: ArrowUpRight, label: "Watch ads & shortlinks", desc: "Extra tokens per view", color: "text-primary" },

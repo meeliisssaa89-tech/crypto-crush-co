@@ -169,7 +169,7 @@ const DailyBonus = ({ open, onOpenChange }: DailyBonusProps) => {
     }));
 
     hapticFeedback.notification("success");
-    toast.success(`Day ${newStreak} bonus: +${reward} coins! 🎉`);
+    toast.success(`Day ${newStreak} bonus: +${reward} XP! 🎉`);
   };
 
   const currentDay = profile?.streak_days ?? 0;
@@ -215,7 +215,7 @@ const DailyBonus = ({ open, onOpenChange }: DailyBonusProps) => {
         <AnimatePresence>
           {claimed && claimedReward > 0 && (
             <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-2">
-              <p className="text-2xl font-display font-bold text-earn">+{claimedReward} coins!</p>
+              <p className="text-2xl font-display font-bold text-earn">+{claimedReward} XP!</p>
               <p className="text-xs text-muted-foreground mt-1">Come back tomorrow for more!</p>
             </motion.div>
           )}

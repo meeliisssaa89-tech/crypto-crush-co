@@ -179,7 +179,7 @@ const AirdropSettings = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-foreground">Token Multiplier</p>
-              <p className="text-[10px] text-muted-foreground">Coins earned × multiplier = tokens</p>
+              <p className="text-[10px] text-muted-foreground">XP earned × multiplier = tokens</p>
             </div>
             <Input
               type="number"
