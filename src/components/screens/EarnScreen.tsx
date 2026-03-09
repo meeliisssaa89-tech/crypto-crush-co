@@ -314,7 +314,10 @@ const EarnScreen = () => {
     setAdCooldowns(prev => ({ ...prev, [ad.id]: new Date() }));
     setCountdowns(prev => ({ ...prev, [cdKey]: ad.cooldown_seconds }));
     hapticFeedback.notification("success");
-    toast.success(`+${ad.reward_amount} coins earned! (${totalAds} ads watched)`);
+    const rewardMsg = ad.reward_type === "xp_and_token"
+      ? `+${ad.reward_amount} XP & +${ad.token_reward_amount} TKN earned! (${totalAds} ads watched)`
+      : `+${ad.reward_amount} XP earned! (${totalAds} ads watched)`;
+    toast.success(rewardMsg);
     setCompleting(null);
     setCountdowns(prev => { const n = { ...prev }; delete n[`watching_${ad.id}`]; return n; });
   };
