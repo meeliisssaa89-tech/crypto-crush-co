@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
-  Star, Box, Plus, Trash2, Edit3, Loader2, Upload, Image, Volume2, Sparkles, Settings
+  Star, Box, Plus, Trash2, Edit3, Loader2, Upload, Image, Volume2, Sparkles, Settings, Gift
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -43,6 +43,8 @@ const GameSettings = () => {
   const [dailyBoxLimit, setDailyBoxLimit] = useState("5");
   const [boxUnlockMethod, setBoxUnlockMethod] = useState("both");
   const [boxTasksRequired, setBoxTasksRequired] = useState("3");
+  const [dailyBonusEnabled, setDailyBonusEnabled] = useState(true);
+  const [dailyBonusRewards, setDailyBonusRewards] = useState("10,15,25,35,50,75,150");
 
   // Form state for new/edit prize
   const [form, setForm] = useState({
@@ -65,7 +67,8 @@ const GameSettings = () => {
       supabase.from("spin_prizes").select("*").order("sort_order"),
       supabase.from("box_prizes").select("*").order("created_at"),
       supabase.from("app_settings").select("key, value").in("key", [
-        "daily_spin_limit", "daily_box_limit", "box_unlock_method", "box_tasks_required"
+        "daily_spin_limit", "daily_box_limit", "box_unlock_method", "box_tasks_required",
+        "daily_bonus_enabled", "daily_bonus_rewards"
       ]),
     ]);
     if (sp) setSpinPrizes(sp);
@@ -76,6 +79,8 @@ const GameSettings = () => {
       if (s.daily_box_limit) setDailyBoxLimit(String(s.daily_box_limit));
       if (s.box_unlock_method) setBoxUnlockMethod(String(s.box_unlock_method));
       if (s.box_tasks_required) setBoxTasksRequired(String(s.box_tasks_required));
+      if (s.daily_bonus_enabled !== undefined) setDailyBonusEnabled(s.daily_bonus_enabled === true || s.daily_bonus_enabled === "true");
+      if (s.daily_bonus_rewards) setDailyBonusRewards(String(s.daily_bonus_rewards));
     }
     setLoading(false);
   };
@@ -264,9 +269,40 @@ const GameSettings = () => {
                       className="w-20 h-8 text-xs bg-secondary/50 text-right"
                     />
                     <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => saveSetting("box_tasks_required", Number(boxTasksRequired))}>Save</Button>
-                  </div>
+          </div>
+
+          <div className="glass rounded-xl p-4">
+            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+              <Gift className="h-4 w-4 text-earn" /> Daily Bonus Settings
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-muted-foreground">Daily Bonus Enabled</span>
+                  <p className="text-[10px] text-muted-foreground">Allow users to claim daily rewards</p>
                 </div>
-              )}
+                <Switch
+                  checked={dailyBonusEnabled}
+                  onCheckedChange={v => { setDailyBonusEnabled(v); saveSetting("daily_bonus_enabled", v); }}
+                />
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground">Daily Rewards (7 days, comma-separated)</span>
+                <p className="text-[10px] text-muted-foreground mb-1">Coins for Day 1 through Day 7</p>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={dailyBonusRewards}
+                    onChange={e => setDailyBonusRewards(e.target.value)}
+                    placeholder="10,15,25,35,50,75,150"
+                    className="flex-1 h-8 text-xs bg-secondary/50"
+                  />
+                  <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => saveSetting("daily_bonus_rewards", dailyBonusRewards)}>Save</Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
             </div>
           </div>
         </div>
