@@ -571,6 +571,9 @@ const EarnScreen = () => {
                       <p className="text-sm font-semibold text-foreground">{ad.title}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <Badge className="text-[8px] px-1.5 py-0 h-3.5 border-0 bg-secondary text-muted-foreground">{ad.ad_type}</Badge>
+                        {(ad.ads_per_click || 1) > 1 && (
+                          <Badge className="text-[8px] px-1.5 py-0 h-3.5 border-0 bg-primary/20 text-primary">{ad.ads_per_click}x ads</Badge>
+                        )}
                         {!available && countdowns[cdKey] > 0 && (
                           <span className="text-[9px] font-mono text-warning flex items-center gap-0.5">
                             <Clock className="h-2.5 w-2.5" />{formatTime(countdowns[cdKey])}
