@@ -149,7 +149,7 @@ const EarnScreen = () => {
 
   const fetchAds = async () => {
     const { data } = await supabase.from("ads")
-      .select("id, title, ad_type, reward_amount, cooldown_seconds, ad_zone_id, ads_per_click")
+      .select("id, title, ad_type, reward_amount, cooldown_seconds, ad_zone_id, ads_per_click, reward_type, token_reward_amount")
       .eq("is_active", true);
     if (data) setAds(data);
 
