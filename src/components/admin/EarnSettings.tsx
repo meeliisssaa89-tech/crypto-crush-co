@@ -193,10 +193,11 @@ const EarnSettings = () => {
       setAdForm({
         title: ad.title, ad_type: ad.ad_type,
         reward_amount: ad.reward_amount, cooldown_seconds: ad.cooldown_seconds,
+        ad_zone_id: ad.ad_zone_id || "", ads_per_click: ad.ads_per_click || 1,
       });
       setAdModal(ad);
     } else {
-      setAdForm({ title: "", ad_type: "video", reward_amount: 5, cooldown_seconds: 300 });
+      setAdForm({ title: "", ad_type: "video", reward_amount: 5, cooldown_seconds: 300, ad_zone_id: "", ads_per_click: 1 });
       setAdModal({});
       setIsCreating(true);
     }
