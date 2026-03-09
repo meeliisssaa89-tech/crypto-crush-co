@@ -377,38 +377,7 @@ const AdminDashboard = () => {
         {activeSection === "games" && <GameSettings />}
 
         {/* WITHDRAWALS */}
-        {activeSection === "withdrawals" && (
-          <div className="space-y-3">
-            <div className="glass rounded-xl p-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Pending total</span>
-                <span className="font-bold text-warning">{pendingTotal.toLocaleString()} EARN</span>
-              </div>
-            </div>
-            {withdrawals.map((w) => (
-              <div key={w.id} className="glass rounded-xl p-3.5 flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground">{Number(w.amount).toLocaleString()} EARN</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[10px] text-muted-foreground">via {w.method}</span>
-                    <span className="text-[10px] text-muted-foreground">{new Date(w.created_at).toLocaleDateString()}</span>
-                    {w.wallet_address && <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">{w.wallet_address}</span>}
-                  </div>
-                </div>
-                {w.status === "pending" ? (
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button onClick={() => processWithdrawal(w.id, "approved")} className="p-1.5 rounded-lg bg-earn/20 text-earn hover:bg-earn/30"><Check className="h-4 w-4" /></button>
-                    <button onClick={() => processWithdrawal(w.id, "rejected", "Declined by admin")} className="p-1.5 rounded-lg bg-destructive/20 text-destructive hover:bg-destructive/30"><X className="h-4 w-4" /></button>
-                  </div>
-                ) : (
-                  <Badge className={`text-[9px] px-2 py-0.5 h-5 border-0 ${
-                    w.status === "approved" ? "bg-earn/20 text-earn" : "bg-destructive/20 text-destructive"
-                  }`}>{w.status}</Badge>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        {activeSection === "withdrawals" && <WithdrawalSettings />}
 
         {/* BROADCAST */}
         {activeSection === "broadcast" && (
