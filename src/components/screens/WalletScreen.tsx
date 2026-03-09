@@ -207,11 +207,8 @@ const WalletScreen = () => {
             <div className="w-32 h-32 mx-auto bg-muted rounded-xl flex items-center justify-center">
               <QrCode className="h-16 w-16 text-muted-foreground" />
             </div>
-            <div className="glass rounded-lg p-3 flex items-center gap-2">
-              <p className="text-xs text-muted-foreground flex-1 truncate font-mono">0x1a2b...f8e9</p>
-              <button onClick={() => { hapticFeedback.notification("success"); toast.success("Address copied!"); }} className="text-primary"><Copy className="h-4 w-4" /></button>
-            </div>
-            <p className="text-[10px] text-center text-muted-foreground">Only send supported tokens to this address</p>
+            <p className="text-sm text-center text-foreground font-medium">Deposit via TON Wallet</p>
+            <p className="text-xs text-center text-muted-foreground">Connect your TON wallet in the wallet section above to deposit funds.</p>
           </div>
         </DialogContent>
       </Dialog>
