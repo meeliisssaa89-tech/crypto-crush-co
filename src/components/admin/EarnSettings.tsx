@@ -114,6 +114,7 @@ const EarnSettings = () => {
         verification_type: task.verification_type || "manual",
         cooldown_seconds: task.cooldown_seconds || 0,
         is_limited: task.is_limited, max_completions: task.max_completions || 100,
+        reward_type: task.reward_type || "xp", token_reward_amount: task.token_reward_amount || 0,
       });
       setTaskModal(task);
     } else {
@@ -121,6 +122,7 @@ const EarnSettings = () => {
         title: "", description: "", reward_amount: 50, type: "social",
         url: "", is_daily: false, verification_type: "manual",
         cooldown_seconds: 0, is_limited: false, max_completions: 100,
+        reward_type: "xp", token_reward_amount: 0,
       });
       setTaskModal({});
       setIsCreating(true);
