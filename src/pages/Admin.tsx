@@ -369,6 +369,9 @@ const AdminDashboard = () => {
         {/* TICKER */}
         {activeSection === "ticker" && <TickerSettings />}
 
+        {/* WALLET TOKENS */}
+        {activeSection === "wallet" && <WalletSettings />}
+
         {/* GAMES */}
         {activeSection === "games" && <GameSettings />}
 
