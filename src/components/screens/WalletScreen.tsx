@@ -31,7 +31,8 @@ const WalletScreen = () => {
   // Ticker config
   const [tickerConfig, setTickerConfig] = useState({
     token_usd_rate: 0.01, token_image_url: "", token_ticker_enabled: true,
-    points_usd_rate: 0.001,
+    points_usd_rate: 0.001, min_withdrawal_xp: 100, xp_to_ton_rate: 0.0001,
+    withdrawal_fee_percent: 2,
   });
 
   // Airdrop data
