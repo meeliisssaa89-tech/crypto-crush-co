@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Flame, Gift, Box, Zap, Trophy, Clock, ChevronRight, Star, Send, Users, Calendar } from "lucide-react";
+import { Flame, Gift, Box, Zap, Trophy, Clock, ChevronRight, Star, Send, Calendar, X, ChevronDown } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +19,8 @@ const HomeScreen = () => {
   const [showMystery, setShowMystery] = useState(false);
   const [showDaily, setShowDaily] = useState(false);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [allActivity, setAllActivity] = useState<any[]>([]);
+  const [showAllActivity, setShowAllActivity] = useState(false);
   const [limitedOfferTimer, setLimitedOfferTimer] = useState(9252);
   const [completedToday, setCompletedToday] = useState(0);
 
@@ -30,7 +32,6 @@ const HomeScreen = () => {
     }
   }, [user]);
 
-  // Countdown timer
   useEffect(() => {
     const interval = setInterval(() => {
       setLimitedOfferTimer(prev => prev > 0 ? prev - 1 : 86400);
@@ -55,6 +56,17 @@ const HomeScreen = () => {
     if (data) setRecentActivity(data);
   };
 
+  const fetchAllActivity = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (data) setAllActivity(data);
+  };
+
   const fetchTodayTasks = async () => {
     if (!user) return;
     const today = new Date();
@@ -65,6 +77,12 @@ const HomeScreen = () => {
       .eq("user_id", user.id)
       .gte("completed_at", today.toISOString());
     if (data) setCompletedToday(data.length);
+  };
+
+  const handleViewAll = () => {
+    hapticFeedback.impact("light");
+    fetchAllActivity();
+    setShowAllActivity(true);
   };
 
   const handleInviteFriend = () => {
@@ -99,6 +117,17 @@ const HomeScreen = () => {
     const hrs = Math.floor(mins / 60);
     if (hrs < 24) return `${hrs}h ago`;
     return `${Math.floor(hrs / 24)}d ago`;
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case "spin_reward": return "🎰";
+      case "box_reward": return "📦";
+      case "daily_bonus": return "📅";
+      case "task_reward": return "✅";
+      case "referral_reward": return "👥";
+      default: return "🪙";
+    }
   };
 
   return (
@@ -254,7 +283,7 @@ const HomeScreen = () => {
       <div>
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-semibold text-foreground">Recent Activity</span>
-          <button className="text-xs text-primary flex items-center gap-0.5">
+          <button onClick={handleViewAll} className="text-xs text-primary flex items-center gap-0.5">
             View all <ChevronRight className="h-3 w-3" />
           </button>
         </div>
@@ -264,9 +293,12 @@ const HomeScreen = () => {
           ) : (
             recentActivity.map((item) => (
               <div key={item.id} className="glass rounded-lg p-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-foreground">{item.description || item.type}</p>
-                  <p className="text-[10px] text-muted-foreground">{formatTime(item.created_at)}</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{getTypeIcon(item.type)}</span>
+                  <div>
+                    <p className="text-sm text-foreground">{item.description || item.type}</p>
+                    <p className="text-[10px] text-muted-foreground">{formatTime(item.created_at)}</p>
+                  </div>
                 </div>
                 <span className="text-sm font-semibold text-earn">+{item.amount} coins</span>
               </div>
@@ -274,6 +306,53 @@ const HomeScreen = () => {
           )}
         </div>
       </div>
+
+      {/* View All Activity Drawer */}
+      <AnimatePresence>
+        {showAllActivity && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
+            onClick={() => setShowAllActivity(false)}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25 }}
+              className="absolute bottom-0 left-0 right-0 max-h-[80vh] bg-background border-t border-border rounded-t-2xl overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-4 border-b border-border">
+                <h3 className="text-sm font-semibold text-foreground">All Activity</h3>
+                <button onClick={() => setShowAllActivity(false)} className="p-1 rounded-lg hover:bg-muted">
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </div>
+              <div className="overflow-y-auto max-h-[calc(80vh-56px)] p-4 space-y-2">
+                {allActivity.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-8">No activity yet.</p>
+                ) : (
+                  allActivity.map((item) => (
+                    <div key={item.id} className="glass rounded-lg p-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{getTypeIcon(item.type)}</span>
+                        <div>
+                          <p className="text-sm text-foreground">{item.description || item.type}</p>
+                          <p className="text-[10px] text-muted-foreground">{formatTime(item.created_at)}</p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-semibold text-earn">+{item.amount} coins</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <SpinWheel open={showSpin} onOpenChange={setShowSpin} />
       <MysteryBox open={showMystery} onOpenChange={setShowMystery} />
