@@ -80,6 +80,7 @@ const EarnSettings = () => {
     if (t.data) setTasks(t.data);
     if (s.data) setShortlinks(s.data);
     if (a.data) setAds(a.data);
+    await fetchAdStats();
     setLoading(false);
   };
 
