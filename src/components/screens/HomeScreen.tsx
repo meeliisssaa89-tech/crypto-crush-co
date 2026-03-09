@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Flame, Gift, Box, Zap, Trophy, Clock, ChevronRight, Star, Send, Calendar, X, ChevronDown } from "lucide-react";
+import { Flame, Gift, Box, Zap, Trophy, Clock, ChevronRight, Star, Send, Calendar, X, ChevronDown, TrendingUp } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
