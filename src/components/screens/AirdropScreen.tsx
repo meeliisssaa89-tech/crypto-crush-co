@@ -44,6 +44,24 @@ const AirdropScreen = () => {
   const [totalParticipants, setTotalParticipants] = useState(0);
   const [claiming, setClaiming] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [config, setConfig] = useState({
+    lock_percentage: 70,
+    token_multiplier: 0.5,
+    claim_enabled: true,
+    allocations: [
+      { label: "Task Completion", pct: 40 },
+      { label: "Referral Bonus", pct: 25 },
+      { label: "Daily Activity", pct: 20 },
+      { label: "Special Events", pct: 15 },
+    ],
+    phases: [
+      { title: "Phase 1 — Accumulation", status: "active" },
+      { title: "Phase 2 — Snapshot", status: "upcoming" },
+      { title: "Phase 3 — Token Generation", status: "upcoming" },
+      { title: "Phase 4 — Vesting & Unlock", status: "upcoming" },
+      { title: "Phase 5 — Full Distribution", status: "upcoming" },
+    ],
+  });
 
   useEffect(() => {
     if (user) fetchData();
@@ -52,8 +70,15 @@ const AirdropScreen = () => {
   const fetchData = async () => {
     if (!user) return;
     setLoading(true);
-    await Promise.all([fetchAirdrop(), fetchLeaderboard()]);
+    await Promise.all([fetchAirdrop(), fetchLeaderboard(), fetchConfig()]);
     setLoading(false);
+  };
+
+  const fetchConfig = async () => {
+    const { data } = await supabase.from("app_settings").select("*").eq("key", "airdrop_config").single();
+    if (data?.value && typeof data.value === "object") {
+      setConfig(prev => ({ ...prev, ...(data.value as any) }));
+    }
   };
 
   const fetchAirdrop = async () => {
