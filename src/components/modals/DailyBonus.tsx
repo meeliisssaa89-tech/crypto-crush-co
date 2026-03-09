@@ -137,7 +137,7 @@ const DailyBonus = ({ open, onOpenChange }: DailyBonusProps) => {
         user_id: user.id,
         streak_days: newStreak,
         last_streak_date: today.toISOString().split("T")[0],
-        referral_code: profile?.referral_code || substr_random(),
+        referral_code: profile?.referral_code || Math.random().toString(36).slice(2, 10),
       }, { onConflict: "user_id" });
 
     // Add XP via safe function
