@@ -163,6 +163,7 @@ const AdminDashboard = () => {
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "users", label: "Users", icon: Users },
     { id: "tasks", label: "Tasks", icon: ListChecks },
+    { id: "earn", label: "Earn", icon: Wallet },
     { id: "games", label: "Games", icon: Gamepad2 },
     { id: "withdrawals", label: "Withdrawals", icon: ArrowDownUp },
     { id: "broadcast", label: "Broadcast", icon: MessageSquare },
