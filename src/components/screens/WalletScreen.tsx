@@ -80,18 +80,29 @@ const WalletScreen = () => {
     setSubmitting(true);
     hapticFeedback.impact("medium");
 
-    const xpInUsd = amount * tickerConfig.points_usd_rate;
     const fee = amount * (tickerConfig.withdrawal_fee_percent / 100);
+
+    // Deduct XP immediately to prevent duplicate requests
+    const { error: deductError } = await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: -amount });
+    if (deductError) { toast.error("Failed to deduct XP"); setSubmitting(false); return; }
 
     const { error } = await supabase.from("withdrawal_requests").insert({
       user_id: user.id, amount, method: "TON",
       wallet_address: withdrawAddress, fee_amount: fee,
     });
 
-    if (error) { toast.error("Failed to submit withdrawal"); }
-    else {
+    if (error) {
+      // Refund XP if withdrawal request failed
+      await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: amount });
+      toast.error("Failed to submit withdrawal");
+    } else {
+      // Record negative transaction
+      await supabase.from("transactions").insert({
+        user_id: user.id, type: "withdrawal", amount: -amount,
+        description: `Withdrawal request: ${amount} XP → TON`,
+      });
       hapticFeedback.notification("success");
-      toast.success("Withdrawal request submitted!");
+      toast.success("Withdrawal request submitted! XP deducted.");
       setModal(null); setWithdrawAmount(""); setWithdrawAddress("");
       fetchData();
     }

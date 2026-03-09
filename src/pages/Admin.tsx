@@ -13,6 +13,7 @@ import AirdropSettings from "@/components/admin/AirdropSettings";
 import TickerSettings from "@/components/admin/TickerSettings";
 import WalletSettings from "@/components/admin/WalletSettings";
 import WithdrawalSettings from "@/components/admin/WithdrawalSettings";
+import ReferralSettings from "@/components/admin/ReferralSettings";
 import UserManagement from "@/components/admin/UserManagement";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -192,6 +193,7 @@ const AdminDashboard = () => {
     { id: "users", label: "Users", icon: Users },
     { id: "tasks", label: "Tasks", icon: ListChecks },
     { id: "earn", label: "Earn", icon: Wallet },
+    { id: "referrals", label: "Referrals", icon: Link2 },
     { id: "airdrop", label: "Airdrop", icon: Rocket },
     { id: "ticker", label: "Ticker", icon: BarChart },
     { id: "wallet", label: "Wallet", icon: Coins },
@@ -381,6 +383,9 @@ const AdminDashboard = () => {
 
         {/* EARN */}
         {activeSection === "earn" && <EarnSettings />}
+
+        {/* REFERRALS */}
+        {activeSection === "referrals" && <ReferralSettings />}
 
         {/* AIRDROP */}
         {activeSection === "airdrop" && <AirdropSettings />}
