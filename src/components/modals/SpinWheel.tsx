@@ -120,10 +120,7 @@ const SpinWheel = ({ open, onOpenChange }: SpinWheelProps) => {
         description: `Spin Wheel: ${prize.label}`,
       });
 
-      const { data: profile } = await supabase.from("profiles").select("xp").eq("user_id", user.id).single();
-      if (profile) {
-        await supabase.from("profiles").update({ xp: profile.xp + Math.floor(prize.value / 4) }).eq("user_id", user.id);
-      }
+      await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: Math.floor(prize.value / 4) });
 
       setSpinsToday(prev => prev + 1);
       setSaving(false);

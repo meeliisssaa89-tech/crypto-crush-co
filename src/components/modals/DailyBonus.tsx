@@ -130,14 +130,18 @@ const DailyBonus = ({ open, onOpenChange }: DailyBonusProps) => {
 
     const reward = dailyRewards[Math.min(newStreak - 1, 6)]?.reward ?? DEFAULT_REWARDS[Math.min(newStreak - 1, 6)];
 
+    // Update streak info
     const { error: updateError } = await supabase
       .from("profiles")
-      .update({
+      .upsert({
+        user_id: user.id,
         streak_days: newStreak,
         last_streak_date: today.toISOString().split("T")[0],
-        xp: (profile?.xp ?? 0) + reward,
-      })
-      .eq("user_id", user.id);
+        referral_code: profile?.referral_code || substr_random(),
+      }, { onConflict: "user_id" });
+
+    // Add XP via safe function
+    await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: reward });
 
     if (updateError) {
       toast.error(updateError.message);
