@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowUpRight, ArrowDownLeft, Repeat, Copy, Eye, EyeOff, ChevronDown, QrCode, Loader2 } from "lucide-react";
+import TonWalletSection from "@/components/wallet/TonWalletSection";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -129,6 +130,9 @@ const WalletScreen = () => {
           ))}
         </div>
       </motion.div>
+
+      {/* TON Wallet */}
+      <TonWalletSection />
 
       {/* Token List */}
       <div>
