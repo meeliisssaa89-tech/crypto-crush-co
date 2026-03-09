@@ -87,12 +87,12 @@ const AirdropScreen = () => {
     if (!ad) {
       const { data: txs } = await supabase.from("transactions").select("amount").eq("user_id", user.id).gt("amount", 0);
       const totalEarned = txs?.reduce((s, t) => s + Number(t.amount), 0) ?? 0;
-      const tokensEarned = Math.floor(totalEarned * 0.5);
+      const tokensEarned = Math.floor(totalEarned * config.token_multiplier);
       const { data: newAd } = await supabase.from("airdrops").insert({
         user_id: user.id,
         tokens_earned: tokensEarned,
         tokens_claimed: 0,
-        tokens_locked: Math.floor(tokensEarned * 0.7),
+        tokens_locked: Math.floor(tokensEarned * config.lock_percentage / 100),
       }).select().single();
       ad = newAd;
     }
