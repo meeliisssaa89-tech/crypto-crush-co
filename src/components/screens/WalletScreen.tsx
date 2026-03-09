@@ -81,7 +81,7 @@ const WalletScreen = () => {
     hapticFeedback.impact("medium");
 
     const xpInUsd = amount * tickerConfig.points_usd_rate;
-    const fee = amount * 0.02;
+    const fee = amount * (tickerConfig.withdrawal_fee_percent / 100);
 
     const { error } = await supabase.from("withdrawal_requests").insert({
       user_id: user.id, amount, method: "TON",
