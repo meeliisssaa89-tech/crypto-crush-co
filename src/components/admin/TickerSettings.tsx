@@ -14,6 +14,9 @@ const defaultTickerConfig = {
   token_ticker_enabled: true,
   token_usd_rate: 0.01,
   token_image_url: "",
+  min_withdrawal_xp: 100,
+  xp_to_ton_rate: 0.0001,
+  withdrawal_fee_percent: 2,
 };
 
 const TickerSettings = () => {
