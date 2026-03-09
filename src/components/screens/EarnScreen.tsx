@@ -348,7 +348,7 @@ const EarnScreen = () => {
       {/* Header */}
       <div className="mb-5">
         <h1 className="text-xl font-display font-bold text-foreground">Earn</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Complete tasks & watch ads to earn coins</p>
+        <p className="text-xs text-muted-foreground mt-0.5">Complete tasks & watch ads to earn XP</p>
         <div className="flex items-center gap-3 mt-3">
           <div className="glass rounded-xl px-3 py-2 flex-1">
             <p className="text-[10px] text-muted-foreground">Tasks Done</p>
