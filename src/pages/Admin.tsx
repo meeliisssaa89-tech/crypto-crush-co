@@ -352,6 +352,9 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {/* GAMES */}
+        {activeSection === "games" && <GameSettings />}
+
         {/* WITHDRAWALS */}
         {activeSection === "withdrawals" && (
           <div className="space-y-3">
