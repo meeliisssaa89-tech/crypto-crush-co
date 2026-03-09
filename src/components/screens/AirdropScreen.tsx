@@ -227,7 +227,7 @@ const AirdropScreen = () => {
         </TabsList>
 
         <TabsContent value="overview" className="mt-4 space-y-4">
-          <AirdropTokenBreakdown totalTokens={totalTokens} />
+          <AirdropTokenBreakdown totalTokens={totalTokens} allocations={config.allocations} />
 
           {/* Your Stats */}
           <div className="glass rounded-xl p-4 border border-primary/20">
