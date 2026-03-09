@@ -98,7 +98,7 @@ const EarnScreen = () => {
   const fetchTasks = async () => {
     const { data: taskData } = await supabase
       .from("tasks")
-      .select("id, title, description, reward_amount, type, status, is_daily, url, verification_type, cooldown_seconds")
+      .select("id, title, description, reward_amount, type, status, is_daily, url, verification_type, cooldown_seconds, reward_type, token_reward_amount")
       .eq("status", "active");
     if (taskData) setTasks(taskData);
 
