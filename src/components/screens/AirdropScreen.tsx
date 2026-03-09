@@ -295,7 +295,7 @@ const AirdropScreen = () => {
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-4">
-          <AirdropTimeline />
+          <AirdropTimeline phases={config.phases} lockPercentage={config.lock_percentage} />
         </TabsContent>
       </Tabs>
     </div>
