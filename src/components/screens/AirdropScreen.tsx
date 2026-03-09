@@ -254,7 +254,7 @@ const AirdropScreen = () => {
               <div className="bg-secondary/50 rounded-lg p-3 text-center">
                 <Lock className="h-5 w-5 text-muted-foreground mx-auto mb-1" />
                 <p className="text-lg font-bold text-foreground">{lockedTokens.toLocaleString()}</p>
-                <p className="text-[10px] text-muted-foreground">Locked (70%)</p>
+                <p className="text-[10px] text-muted-foreground">Locked ({config.lock_percentage}%)</p>
               </div>
             </div>
           </div>
