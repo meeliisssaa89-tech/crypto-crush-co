@@ -36,6 +36,14 @@ interface ShortlinkRow {
 
 interface AdRow {
   id: string; title: string; ad_type: string; reward_amount: number; cooldown_seconds: number;
+  ad_zone_id: string | null; ads_per_click: number;
+}
+
+// Monetag SDK function type
+declare global {
+  interface Window {
+    [key: string]: any;
+  }
 }
 
 const EarnScreen = () => {
@@ -138,7 +146,7 @@ const EarnScreen = () => {
 
   const fetchAds = async () => {
     const { data } = await supabase.from("ads")
-      .select("id, title, ad_type, reward_amount, cooldown_seconds")
+      .select("id, title, ad_type, reward_amount, cooldown_seconds, ad_zone_id, ads_per_click")
       .eq("is_active", true);
     if (data) setAds(data);
 
@@ -246,6 +254,17 @@ const EarnScreen = () => {
     setCountdowns(prev => { const n = { ...prev }; delete n[`sl_${link.id}`]; return n; });
   };
 
+  const showMonetag = (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const fn = window['show_8914235'];
+      if (typeof fn === 'function') {
+        fn().then(() => resolve()).catch(() => reject(new Error('Ad failed')));
+      } else {
+        reject(new Error('Monetag SDK not loaded'));
+      }
+    });
+  };
+
   const watchAd = async (ad: AdRow) => {
     if (!user) return;
     const cdKey = `ad_${ad.id}`;
@@ -256,8 +275,25 @@ const EarnScreen = () => {
 
     hapticFeedback.impact("medium");
     setCompleting(ad.id);
-    setCountdowns(prev => ({ ...prev, [`watching_${ad.id}`]: 3 }));
-    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    const totalAds = ad.ads_per_click || 1;
+    
+    try {
+      for (let i = 0; i < totalAds; i++) {
+        toast.info(`📺 Ad ${i + 1}/${totalAds}...`);
+        setCountdowns(prev => ({ ...prev, [`watching_${ad.id}`]: totalAds - i }));
+        await showMonetag();
+        // Small delay between ads
+        if (i < totalAds - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+    } catch (err) {
+      toast.error('Ad failed to load. Please try again.');
+      setCompleting(null);
+      setCountdowns(prev => { const n = { ...prev }; delete n[`watching_${ad.id}`]; return n; });
+      return;
+    }
 
     await supabase.from("user_ad_views").insert({
       user_id: user.id, ad_id: ad.id, reward_amount: ad.reward_amount,
@@ -269,8 +305,9 @@ const EarnScreen = () => {
     setAdCooldowns(prev => ({ ...prev, [ad.id]: new Date() }));
     setCountdowns(prev => ({ ...prev, [cdKey]: ad.cooldown_seconds }));
     hapticFeedback.notification("success");
-    toast.success(`+${ad.reward_amount} coins earned!`);
+    toast.success(`+${ad.reward_amount} coins earned! (${totalAds} ads watched)`);
     setCompleting(null);
+    setCountdowns(prev => { const n = { ...prev }; delete n[`watching_${ad.id}`]; return n; });
   };
 
   const formatTime = (seconds: number) => {
@@ -534,6 +571,9 @@ const EarnScreen = () => {
                       <p className="text-sm font-semibold text-foreground">{ad.title}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <Badge className="text-[8px] px-1.5 py-0 h-3.5 border-0 bg-secondary text-muted-foreground">{ad.ad_type}</Badge>
+                        {(ad.ads_per_click || 1) > 1 && (
+                          <Badge className="text-[8px] px-1.5 py-0 h-3.5 border-0 bg-primary/20 text-primary">{ad.ads_per_click}x ads</Badge>
+                        )}
                         {!available && countdowns[cdKey] > 0 && (
                           <span className="text-[9px] font-mono text-warning flex items-center gap-0.5">
                             <Clock className="h-2.5 w-2.5" />{formatTime(countdowns[cdKey])}
