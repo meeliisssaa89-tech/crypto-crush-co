@@ -63,6 +63,11 @@ const EarnSettings = () => {
     ad_zone_id: "", ads_per_click: 1,
   });
 
+  // Ad stats
+  const [adStats, setAdStats] = useState<{ totalViews: number; totalRewards: number; todayViews: number; perAd: Record<string, { views: number; rewards: number }> }>({
+    totalViews: 0, totalRewards: 0, todayViews: 0, perAd: {},
+  });
+
   useEffect(() => { fetchAll(); }, []);
 
   const fetchAll = async () => {
