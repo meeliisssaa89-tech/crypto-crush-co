@@ -73,7 +73,7 @@ const WalletScreen = () => {
   const submitWithdrawal = async () => {
     if (!user || submitting) return;
     const amount = parseFloat(withdrawAmount);
-    if (!amount || amount < 100) { toast.error("Minimum withdrawal is 100 XP"); return; }
+    if (!amount || amount < tickerConfig.min_withdrawal_xp) { toast.error(`Minimum withdrawal is ${tickerConfig.min_withdrawal_xp} XP`); return; }
     if (amount > xpBalance) { toast.error("Insufficient XP balance"); return; }
     if (!withdrawAddress.trim()) { toast.error("Enter your TON wallet address"); return; }
 
