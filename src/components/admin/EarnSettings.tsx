@@ -50,17 +50,20 @@ const EarnSettings = () => {
     title: "", description: "", reward_amount: 50, type: "social",
     url: "", is_daily: false, verification_type: "manual",
     cooldown_seconds: 0, is_limited: false, max_completions: 100,
+    reward_type: "xp", token_reward_amount: 0,
   });
 
   // Shortlink form
   const [slForm, setSlForm] = useState({
     title: "", url: "", reward_amount: 10, timer_seconds: 10, network: "direct", daily_limit: 0,
+    reward_type: "xp", token_reward_amount: 0,
   });
 
   // Ad form
   const [adForm, setAdForm] = useState({
     title: "", ad_type: "video", reward_amount: 5, cooldown_seconds: 300,
     ad_zone_id: "", ads_per_click: 1,
+    reward_type: "xp", token_reward_amount: 0,
   });
 
   // Ad stats
@@ -111,6 +114,7 @@ const EarnSettings = () => {
         verification_type: task.verification_type || "manual",
         cooldown_seconds: task.cooldown_seconds || 0,
         is_limited: task.is_limited, max_completions: task.max_completions || 100,
+        reward_type: task.reward_type || "xp", token_reward_amount: task.token_reward_amount || 0,
       });
       setTaskModal(task);
     } else {
@@ -118,6 +122,7 @@ const EarnSettings = () => {
         title: "", description: "", reward_amount: 50, type: "social",
         url: "", is_daily: false, verification_type: "manual",
         cooldown_seconds: 0, is_limited: false, max_completions: 100,
+        reward_type: "xp", token_reward_amount: 0,
       });
       setTaskModal({});
       setIsCreating(true);
@@ -137,6 +142,8 @@ const EarnSettings = () => {
       cooldown_seconds: Number(taskForm.cooldown_seconds) || 0,
       is_limited: taskForm.is_limited,
       max_completions: taskForm.is_limited ? Number(taskForm.max_completions) : null,
+      reward_type: taskForm.reward_type,
+      token_reward_amount: taskForm.reward_type === "xp_and_token" ? Number(taskForm.token_reward_amount) : 0,
     };
 
     if (isCreating || !taskModal?.id) {
@@ -169,10 +176,11 @@ const EarnSettings = () => {
       setSlForm({
         title: sl.title, url: sl.url, reward_amount: sl.reward_amount,
         timer_seconds: sl.timer_seconds, network: sl.network, daily_limit: sl.daily_limit || 0,
+        reward_type: sl.reward_type || "xp", token_reward_amount: sl.token_reward_amount || 0,
       });
       setShortlinkModal(sl);
     } else {
-      setSlForm({ title: "", url: "", reward_amount: 10, timer_seconds: 10, network: "direct", daily_limit: 0 });
+      setSlForm({ title: "", url: "", reward_amount: 10, timer_seconds: 10, network: "direct", daily_limit: 0, reward_type: "xp", token_reward_amount: 0 });
       setShortlinkModal({});
       setIsCreating(true);
     }
@@ -186,6 +194,8 @@ const EarnSettings = () => {
       timer_seconds: Number(slForm.timer_seconds),
       network: slForm.network,
       daily_limit: Number(slForm.daily_limit) || null,
+      reward_type: slForm.reward_type,
+      token_reward_amount: slForm.reward_type === "xp_and_token" ? Number(slForm.token_reward_amount) : 0,
     };
 
     if (isCreating || !shortlinkModal?.id) {
@@ -217,10 +227,11 @@ const EarnSettings = () => {
         title: ad.title, ad_type: ad.ad_type,
         reward_amount: ad.reward_amount, cooldown_seconds: ad.cooldown_seconds,
         ad_zone_id: ad.ad_zone_id || "", ads_per_click: ad.ads_per_click || 1,
+        reward_type: ad.reward_type || "xp", token_reward_amount: ad.token_reward_amount || 0,
       });
       setAdModal(ad);
     } else {
-      setAdForm({ title: "", ad_type: "video", reward_amount: 5, cooldown_seconds: 300, ad_zone_id: "", ads_per_click: 1 });
+      setAdForm({ title: "", ad_type: "video", reward_amount: 5, cooldown_seconds: 300, ad_zone_id: "", ads_per_click: 1, reward_type: "xp", token_reward_amount: 0 });
       setAdModal({});
       setIsCreating(true);
     }
@@ -234,6 +245,8 @@ const EarnSettings = () => {
       cooldown_seconds: Number(adForm.cooldown_seconds),
       ad_zone_id: adForm.ad_zone_id.trim() || null,
       ads_per_click: Number(adForm.ads_per_click) || 1,
+      reward_type: adForm.reward_type,
+      token_reward_amount: adForm.reward_type === "xp_and_token" ? Number(adForm.token_reward_amount) : 0,
     };
 
     if (isCreating || !adModal?.id) {
@@ -309,7 +322,9 @@ const EarnSettings = () => {
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className="text-[10px] text-muted-foreground">{typeInfo.label}</span>
-                      <span className="text-[10px] text-earn">+{task.reward_amount}</span>
+                      <span className="text-[10px] text-earn">+{task.reward_amount} XP</span>
+                      {(task.reward_type === "xp_and_token") && <span className="text-[10px] text-primary">+{task.token_reward_amount} TKN</span>}
+                      <Badge className="text-[8px] px-1 py-0 h-3.5 border-0 bg-primary/10 text-primary">{task.reward_type === "xp_and_token" ? "XP+TKN" : "XP"}</Badge>
                       {task.cooldown_seconds > 0 && (
                         <span className="text-[10px] text-accent flex items-center gap-0.5">
                           <Clock className="h-2.5 w-2.5" />{task.cooldown_seconds}s
@@ -469,16 +484,42 @@ const EarnSettings = () => {
               </div>
             </div>
 
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Reward Type</label>
+              <div className="flex gap-1.5">
+                {[{ value: "xp", label: "XP Only" }, { value: "xp_and_token", label: "XP + Token" }].map(rt => (
+                  <button key={rt.value} onClick={() => setTaskForm({ ...taskForm, reward_type: rt.value })}
+                    className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                      taskForm.reward_type === rt.value ? "gradient-primary text-white" : "glass text-muted-foreground"
+                    }`}>{rt.label}</button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Reward</label>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">XP Reward</label>
                 <Input type="number" value={taskForm.reward_amount} onChange={e => setTaskForm({ ...taskForm, reward_amount: Number(e.target.value) })} className="bg-secondary/50" />
               </div>
+              {taskForm.reward_type === "xp_and_token" ? (
+                <div>
+                  <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Token Reward</label>
+                  <Input type="number" value={taskForm.token_reward_amount} onChange={e => setTaskForm({ ...taskForm, token_reward_amount: Number(e.target.value) })} className="bg-secondary/50" />
+                </div>
+              ) : (
+                <div>
+                  <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Cooldown (sec)</label>
+                  <Input type="number" value={taskForm.cooldown_seconds} onChange={e => setTaskForm({ ...taskForm, cooldown_seconds: Number(e.target.value) })} className="bg-secondary/50" />
+                </div>
+              )}
+            </div>
+
+            {taskForm.reward_type === "xp_and_token" && (
               <div>
                 <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Cooldown (sec)</label>
                 <Input type="number" value={taskForm.cooldown_seconds} onChange={e => setTaskForm({ ...taskForm, cooldown_seconds: Number(e.target.value) })} className="bg-secondary/50" />
               </div>
-            </div>
+            )}
 
             <div>
               <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">URL / Link</label>
@@ -538,9 +579,20 @@ const EarnSettings = () => {
           <div className="space-y-3">
             <Input placeholder="Title" value={slForm.title} onChange={e => setSlForm({ ...slForm, title: e.target.value })} className="bg-secondary/50" />
             <Input placeholder="https://shortlink.com/abc" value={slForm.url} onChange={e => setSlForm({ ...slForm, url: e.target.value })} className="bg-secondary/50" />
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Reward Type</label>
+              <div className="flex gap-1.5">
+                {[{ value: "xp", label: "XP Only" }, { value: "xp_and_token", label: "XP + Token" }].map(rt => (
+                  <button key={rt.value} onClick={() => setSlForm({ ...slForm, reward_type: rt.value })}
+                    className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                      slForm.reward_type === rt.value ? "gradient-primary text-white" : "glass text-muted-foreground"
+                    }`}>{rt.label}</button>
+                ))}
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Reward</label>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">XP Reward</label>
                 <Input type="number" value={slForm.reward_amount} onChange={e => setSlForm({ ...slForm, reward_amount: Number(e.target.value) })} className="bg-secondary/50" />
               </div>
               <div>
@@ -548,6 +600,12 @@ const EarnSettings = () => {
                 <Input type="number" value={slForm.timer_seconds} onChange={e => setSlForm({ ...slForm, timer_seconds: Number(e.target.value) })} className="bg-secondary/50" />
               </div>
             </div>
+            {slForm.reward_type === "xp_and_token" && (
+              <div>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Token Reward</label>
+                <Input type="number" value={slForm.token_reward_amount} onChange={e => setSlForm({ ...slForm, token_reward_amount: Number(e.target.value) })} className="bg-secondary/50" />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Network</label>
@@ -585,6 +643,17 @@ const EarnSettings = () => {
               <Input placeholder="e.g. show_8914235" value={adForm.ad_zone_id} onChange={e => setAdForm({ ...adForm, ad_zone_id: e.target.value })} className="bg-secondary/50" />
               <p className="text-[10px] text-muted-foreground mt-1">The Monetag function name from your SDK</p>
             </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Reward Type</label>
+              <div className="flex gap-1.5">
+                {[{ value: "xp", label: "XP Only" }, { value: "xp_and_token", label: "XP + Token" }].map(rt => (
+                  <button key={rt.value} onClick={() => setAdForm({ ...adForm, reward_type: rt.value })}
+                    className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                      adForm.reward_type === rt.value ? "gradient-primary text-white" : "glass text-muted-foreground"
+                    }`}>{rt.label}</button>
+                ))}
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Type</label>
@@ -596,10 +665,16 @@ const EarnSettings = () => {
                 </select>
               </div>
               <div>
-                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Reward</label>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">XP Reward</label>
                 <Input type="number" value={adForm.reward_amount} onChange={e => setAdForm({ ...adForm, reward_amount: Number(e.target.value) })} className="bg-secondary/50" />
               </div>
             </div>
+            {adForm.reward_type === "xp_and_token" && (
+              <div>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Token Reward</label>
+                <Input type="number" value={adForm.token_reward_amount} onChange={e => setAdForm({ ...adForm, token_reward_amount: Number(e.target.value) })} className="bg-secondary/50" />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Cooldown (seconds)</label>

@@ -31,7 +31,8 @@ const WalletScreen = () => {
   // Ticker config
   const [tickerConfig, setTickerConfig] = useState({
     token_usd_rate: 0.01, token_image_url: "", token_ticker_enabled: true,
-    points_usd_rate: 0.001,
+    points_usd_rate: 0.001, min_withdrawal_xp: 100, xp_to_ton_rate: 0.0001,
+    withdrawal_fee_percent: 2,
   });
 
   // Airdrop data
@@ -72,7 +73,7 @@ const WalletScreen = () => {
   const submitWithdrawal = async () => {
     if (!user || submitting) return;
     const amount = parseFloat(withdrawAmount);
-    if (!amount || amount < 100) { toast.error("Minimum withdrawal is 100 XP"); return; }
+    if (!amount || amount < tickerConfig.min_withdrawal_xp) { toast.error(`Minimum withdrawal is ${tickerConfig.min_withdrawal_xp} XP`); return; }
     if (amount > xpBalance) { toast.error("Insufficient XP balance"); return; }
     if (!withdrawAddress.trim()) { toast.error("Enter your TON wallet address"); return; }
 
@@ -80,7 +81,7 @@ const WalletScreen = () => {
     hapticFeedback.impact("medium");
 
     const xpInUsd = amount * tickerConfig.points_usd_rate;
-    const fee = amount * 0.02;
+    const fee = amount * (tickerConfig.withdrawal_fee_percent / 100);
 
     const { error } = await supabase.from("withdrawal_requests").insert({
       user_id: user.id, amount, method: "TON",
@@ -97,9 +98,10 @@ const WalletScreen = () => {
     setSubmitting(false);
   };
 
-  const feeAmount = parseFloat(withdrawAmount) ? parseFloat(withdrawAmount) * 0.02 : 0;
+  const feePercent = tickerConfig.withdrawal_fee_percent;
+  const feeAmount = parseFloat(withdrawAmount) ? parseFloat(withdrawAmount) * (feePercent / 100) : 0;
   const receiveAmount = parseFloat(withdrawAmount) ? parseFloat(withdrawAmount) - feeAmount : 0;
-  const receiveInTon = receiveAmount * tickerConfig.points_usd_rate; // simplified
+  const receiveInTon = receiveAmount * tickerConfig.xp_to_ton_rate;
 
   return (
     <div className="px-4 pt-6 pb-4 space-y-5">
@@ -239,7 +241,7 @@ const WalletScreen = () => {
 
             <div>
               <label className="text-[10px] text-muted-foreground mb-1 block">Amount (XP)</label>
-              <Input placeholder="Min 100 XP" type="number" value={withdrawAmount}
+              <Input placeholder={`Min ${tickerConfig.min_withdrawal_xp} XP`} type="number" value={withdrawAmount}
                 onChange={(e) => setWithdrawAmount(e.target.value)} className="bg-secondary/50" />
             </div>
 
@@ -252,15 +254,15 @@ const WalletScreen = () => {
             <div className="glass rounded-lg p-3 space-y-1">
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Rate</span>
-                <span className="text-foreground">1 XP = ${tickerConfig.points_usd_rate}</span>
+                <span className="text-foreground">1 XP = {tickerConfig.xp_to_ton_rate} TON</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Fee (2%)</span>
+                <span className="text-muted-foreground">Fee ({feePercent}%)</span>
                 <span className="text-foreground">{feeAmount.toFixed(2)} XP</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Min withdrawal</span>
-                <span className="text-foreground">100 XP</span>
+                <span className="text-foreground">{tickerConfig.min_withdrawal_xp} XP</span>
               </div>
               <div className="h-px bg-border my-1" />
               <div className="flex justify-between text-xs">

@@ -283,7 +283,7 @@ const AdminDashboard = () => {
                     </div>
                     <div className="flex items-center gap-3 mt-1">
                       <span className="text-[10px] text-muted-foreground">{task.type}</span>
-                      <span className="text-[10px] text-earn">+{task.reward_amount} coins</span>
+                      <span className="text-[10px] text-earn">+{task.reward_amount} XP</span>
                       <span className="text-[10px] text-muted-foreground">{task.current_completions} done</span>
                     </div>
                   </div>

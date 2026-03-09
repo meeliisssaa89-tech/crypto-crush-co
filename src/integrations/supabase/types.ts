@@ -51,7 +51,9 @@ export type Database = {
           id: string
           is_active: boolean
           reward_amount: number
+          reward_type: string
           title: string
+          token_reward_amount: number
           updated_at: string
         }
         Insert: {
@@ -63,7 +65,9 @@ export type Database = {
           id?: string
           is_active?: boolean
           reward_amount?: number
+          reward_type?: string
           title: string
+          token_reward_amount?: number
           updated_at?: string
         }
         Update: {
@@ -75,7 +79,9 @@ export type Database = {
           id?: string
           is_active?: boolean
           reward_amount?: number
+          reward_type?: string
           title?: string
+          token_reward_amount?: number
           updated_at?: string
         }
         Relationships: []
@@ -307,8 +313,10 @@ export type Database = {
           is_active: boolean
           network: string
           reward_amount: number
+          reward_type: string
           timer_seconds: number
           title: string
+          token_reward_amount: number
           updated_at: string
           url: string
         }
@@ -319,8 +327,10 @@ export type Database = {
           is_active?: boolean
           network?: string
           reward_amount?: number
+          reward_type?: string
           timer_seconds?: number
           title: string
+          token_reward_amount?: number
           updated_at?: string
           url: string
         }
@@ -331,8 +341,10 @@ export type Database = {
           is_active?: boolean
           network?: string
           reward_amount?: number
+          reward_type?: string
           timer_seconds?: number
           title?: string
+          token_reward_amount?: number
           updated_at?: string
           url?: string
         }
@@ -395,8 +407,10 @@ export type Database = {
           max_completions: number | null
           reward_amount: number
           reward_currency_id: string | null
+          reward_type: string
           status: string
           title: string
+          token_reward_amount: number
           type: string
           updated_at: string
           url: string | null
@@ -413,8 +427,10 @@ export type Database = {
           max_completions?: number | null
           reward_amount?: number
           reward_currency_id?: string | null
+          reward_type?: string
           status?: string
           title: string
+          token_reward_amount?: number
           type?: string
           updated_at?: string
           url?: string | null
@@ -431,8 +447,10 @@ export type Database = {
           max_completions?: number | null
           reward_amount?: number
           reward_currency_id?: string | null
+          reward_type?: string
           status?: string
           title?: string
+          token_reward_amount?: number
           type?: string
           updated_at?: string
           url?: string | null

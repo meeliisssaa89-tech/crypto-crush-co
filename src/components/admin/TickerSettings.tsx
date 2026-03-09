@@ -14,6 +14,9 @@ const defaultTickerConfig = {
   token_ticker_enabled: true,
   token_usd_rate: 0.01,
   token_image_url: "",
+  min_withdrawal_xp: 100,
+  xp_to_ton_rate: 0.0001,
+  withdrawal_fee_percent: 2,
 };
 
 const TickerSettings = () => {
@@ -202,7 +205,77 @@ const TickerSettings = () => {
         </div>
       </div>
 
-      {/* Preview */}
+      {/* Withdrawal Config */}
+      <div className="glass rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+          <DollarSign className="h-4 w-4 text-warning" />
+          Withdrawal Settings
+        </h3>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-foreground">Min Withdrawal (XP)</p>
+              <p className="text-[10px] text-muted-foreground">Minimum XP to withdraw</p>
+            </div>
+            <Input
+              type="number"
+              min={1}
+              value={config.min_withdrawal_xp}
+              onChange={(e) => setConfig({ ...config, min_withdrawal_xp: Number(e.target.value) })}
+              className="w-24 h-8 text-xs bg-secondary/50 text-right"
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-foreground">1 XP = TON</p>
+              <p className="text-[10px] text-muted-foreground">Conversion rate for withdrawals</p>
+            </div>
+            <Input
+              type="number"
+              step={0.00001}
+              min={0}
+              value={config.xp_to_ton_rate}
+              onChange={(e) => setConfig({ ...config, xp_to_ton_rate: Number(e.target.value) })}
+              className="w-24 h-8 text-xs bg-secondary/50 text-right"
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-foreground">Withdrawal Fee %</p>
+              <p className="text-[10px] text-muted-foreground">Fee deducted from withdrawal</p>
+            </div>
+            <div className="flex items-center gap-1">
+              <Input
+                type="number"
+                step={0.5}
+                min={0}
+                max={50}
+                value={config.withdrawal_fee_percent}
+                onChange={(e) => setConfig({ ...config, withdrawal_fee_percent: Number(e.target.value) })}
+                className="w-20 h-8 text-xs bg-secondary/50 text-right"
+              />
+              <span className="text-xs text-muted-foreground">%</span>
+            </div>
+          </div>
+          <div className="glass rounded-lg p-3 space-y-1">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Preview</p>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">1,000 XP →</span>
+              <span className="text-foreground font-semibold">{(1000 * config.xp_to_ton_rate).toFixed(4)} TON</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Fee ({config.withdrawal_fee_percent}%)</span>
+              <span className="text-destructive">-{(1000 * config.xp_to_ton_rate * config.withdrawal_fee_percent / 100).toFixed(4)} TON</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Receive</span>
+              <span className="text-earn font-semibold">{(1000 * config.xp_to_ton_rate * (1 - config.withdrawal_fee_percent / 100)).toFixed(4)} TON</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
       <div className="glass rounded-xl p-4">
         <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
           <Eye className="h-4 w-4 text-muted-foreground" />
