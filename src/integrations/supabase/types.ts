@@ -128,6 +128,48 @@ export type Database = {
         }
         Relationships: []
       }
+      box_prizes: {
+        Row: {
+          animation_url: string | null
+          created_at: string
+          emoji: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          label: string
+          rarity: string
+          sound_url: string | null
+          value: number
+          weight: number
+        }
+        Insert: {
+          animation_url?: string | null
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          label: string
+          rarity?: string
+          sound_url?: string | null
+          value?: number
+          weight?: number
+        }
+        Update: {
+          animation_url?: string | null
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          label?: string
+          rarity?: string
+          sound_url?: string | null
+          value?: number
+          weight?: number
+        }
+        Relationships: []
+      }
       currencies: {
         Row: {
           created_at: string
@@ -272,6 +314,51 @@ export type Database = {
           title?: string
           updated_at?: string
           url?: string
+        }
+        Relationships: []
+      }
+      spin_prizes: {
+        Row: {
+          animation_url: string | null
+          color: string
+          created_at: string
+          emoji: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          label: string
+          sort_order: number
+          sound_url: string | null
+          value: number
+          weight: number
+        }
+        Insert: {
+          animation_url?: string | null
+          color?: string
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          label: string
+          sort_order?: number
+          sound_url?: string | null
+          value?: number
+          weight?: number
+        }
+        Update: {
+          animation_url?: string | null
+          color?: string
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          label?: string
+          sort_order?: number
+          sound_url?: string | null
+          value?: number
+          weight?: number
         }
         Relationships: []
       }
@@ -439,6 +526,41 @@ export type Database = {
           },
         ]
       }
+      user_box_opens: {
+        Row: {
+          id: string
+          opened_at: string
+          prize_id: string | null
+          reward_amount: number
+          unlock_method: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          opened_at?: string
+          prize_id?: string | null
+          reward_amount?: number
+          unlock_method?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          opened_at?: string
+          prize_id?: string | null
+          reward_amount?: number
+          unlock_method?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_box_opens_prize_id_fkey"
+            columns: ["prize_id"]
+            isOneToOne: false
+            referencedRelation: "box_prizes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -485,6 +607,38 @@ export type Database = {
             columns: ["shortlink_id"]
             isOneToOne: false
             referencedRelation: "shortlinks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_spins: {
+        Row: {
+          id: string
+          prize_id: string | null
+          reward_amount: number
+          spun_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          prize_id?: string | null
+          reward_amount?: number
+          spun_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          prize_id?: string | null
+          reward_amount?: number
+          spun_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_spins_prize_id_fkey"
+            columns: ["prize_id"]
+            isOneToOne: false
+            referencedRelation: "spin_prizes"
             referencedColumns: ["id"]
           },
         ]
