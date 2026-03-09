@@ -338,6 +338,22 @@ const EarnScreen = () => {
     await supabase.from("user_ad_views").insert({
       user_id: user.id, ad_id: ad.id, reward_amount: ad.reward_amount,
     });
+
+    // Add XP to profile
+    const { data: currentProfile } = await supabase.from("profiles").select("xp").eq("user_id", user.id).single();
+    const currentXp = currentProfile?.xp ?? 0;
+    await supabase.from("profiles").update({ xp: currentXp + ad.reward_amount }).eq("user_id", user.id);
+
+    // Add token if applicable
+    if (ad.reward_type === "xp_and_token" && ad.token_reward_amount > 0) {
+      const { data: airdropRow } = await supabase.from("airdrops").select("tokens_earned").eq("user_id", user.id).single();
+      if (airdropRow) {
+        await supabase.from("airdrops").update({ tokens_earned: (airdropRow.tokens_earned ?? 0) + ad.token_reward_amount }).eq("user_id", user.id);
+      } else {
+        await supabase.from("airdrops").insert({ user_id: user.id, tokens_earned: ad.token_reward_amount });
+      }
+    }
+
     await supabase.from("transactions").insert({
       user_id: user.id, type: "ad_reward", amount: ad.reward_amount, description: `Ad: ${ad.title}`,
     });
