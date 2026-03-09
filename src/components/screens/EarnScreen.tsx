@@ -36,6 +36,14 @@ interface ShortlinkRow {
 
 interface AdRow {
   id: string; title: string; ad_type: string; reward_amount: number; cooldown_seconds: number;
+  ad_zone_id: string | null; ads_per_click: number;
+}
+
+// Monetag SDK function type
+declare global {
+  interface Window {
+    [key: string]: any;
+  }
 }
 
 const EarnScreen = () => {
