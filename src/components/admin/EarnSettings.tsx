@@ -484,16 +484,42 @@ const EarnSettings = () => {
               </div>
             </div>
 
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Reward Type</label>
+              <div className="flex gap-1.5">
+                {[{ value: "xp", label: "XP Only" }, { value: "xp_and_token", label: "XP + Token" }].map(rt => (
+                  <button key={rt.value} onClick={() => setTaskForm({ ...taskForm, reward_type: rt.value })}
+                    className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                      taskForm.reward_type === rt.value ? "gradient-primary text-white" : "glass text-muted-foreground"
+                    }`}>{rt.label}</button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Reward</label>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">XP Reward</label>
                 <Input type="number" value={taskForm.reward_amount} onChange={e => setTaskForm({ ...taskForm, reward_amount: Number(e.target.value) })} className="bg-secondary/50" />
               </div>
+              {taskForm.reward_type === "xp_and_token" ? (
+                <div>
+                  <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Token Reward</label>
+                  <Input type="number" value={taskForm.token_reward_amount} onChange={e => setTaskForm({ ...taskForm, token_reward_amount: Number(e.target.value) })} className="bg-secondary/50" />
+                </div>
+              ) : (
+                <div>
+                  <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Cooldown (sec)</label>
+                  <Input type="number" value={taskForm.cooldown_seconds} onChange={e => setTaskForm({ ...taskForm, cooldown_seconds: Number(e.target.value) })} className="bg-secondary/50" />
+                </div>
+              )}
+            </div>
+
+            {taskForm.reward_type === "xp_and_token" && (
               <div>
                 <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Cooldown (sec)</label>
                 <Input type="number" value={taskForm.cooldown_seconds} onChange={e => setTaskForm({ ...taskForm, cooldown_seconds: Number(e.target.value) })} className="bg-secondary/50" />
               </div>
-            </div>
+            )}
 
             <div>
               <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">URL / Link</label>
