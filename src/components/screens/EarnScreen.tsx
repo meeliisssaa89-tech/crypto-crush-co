@@ -42,18 +42,13 @@ interface AdRow {
   reward_type: string; token_reward_amount: number;
 }
 
-// Monetag SDK function type
-declare global {
-  interface Window {
-    [key: string]: any;
-  }
-}
+declare global { interface Window { [key: string]: any; } }
 
 const EarnScreen = () => {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const [tasks, setTasks] = useState<TaskRow[]>([]);
-  const [userTaskMap, setUserTaskMap] = useState<Record<string, string>>({}); // task_id -> status
-  const [taskCooldowns, setTaskCooldowns] = useState<Record<string, number>>({}); // task_id -> remaining seconds
+  const [userTaskMap, setUserTaskMap] = useState<Record<string, string>>({});
+  const [taskCooldowns, setTaskCooldowns] = useState<Record<string, number>>({});
   const [shortlinks, setShortlinks] = useState<ShortlinkRow[]>([]);
   const [completedShortlinks, setCompletedShortlinks] = useState<Set<string>>(new Set());
   const [shortlinkEarnings, setShortlinkEarnings] = useState(0);
@@ -65,24 +60,16 @@ const EarnScreen = () => {
 
   useEffect(() => { fetchAll(); }, [user]);
 
-  // Global countdown ticker
   useEffect(() => {
     const interval = setInterval(() => {
       setCountdowns(prev => {
-        const next = { ...prev };
-        let changed = false;
-        for (const key in next) {
-          if (next[key] > 0) { next[key]--; changed = true; }
-        }
+        const next = { ...prev }; let changed = false;
+        for (const key in next) { if (next[key] > 0) { next[key]--; changed = true; } }
         return changed ? next : prev;
       });
       setTaskCooldowns(prev => {
-        const next = { ...prev };
-        let changed = false;
-        for (const key in next) {
-          if (next[key] > 0) { next[key]--; changed = true; }
-          else { delete next[key]; changed = true; }
-        }
+        const next = { ...prev }; let changed = false;
+        for (const key in next) { if (next[key] > 0) { next[key]--; changed = true; } else { delete next[key]; changed = true; } }
         return changed ? next : prev;
       });
     }, 1000);
@@ -96,23 +83,18 @@ const EarnScreen = () => {
   };
 
   const fetchTasks = async () => {
-    const { data: taskData } = await supabase
-      .from("tasks")
+    const { data: taskData } = await supabase.from("tasks")
       .select("id, title, description, reward_amount, type, status, is_daily, url, verification_type, cooldown_seconds, reward_type, token_reward_amount")
       .eq("status", "active");
     if (taskData) setTasks(taskData);
 
     if (user) {
-      const { data: userTasks } = await supabase
-        .from("user_tasks")
-        .select("task_id, status, completed_at")
-        .eq("user_id", user.id);
+      const { data: userTasks } = await supabase.from("user_tasks").select("task_id, status, completed_at").eq("user_id", user.id);
       if (userTasks) {
         const map: Record<string, string> = {};
         const cooldowns: Record<string, number> = {};
         userTasks.forEach(ut => {
           map[ut.task_id] = ut.status;
-          // Check cooldown for completed tasks
           if (ut.status === "completed" && ut.completed_at) {
             const task = taskData?.find(t => t.id === ut.task_id);
             if (task && task.cooldown_seconds > 0) {
@@ -122,8 +104,7 @@ const EarnScreen = () => {
             }
           }
         });
-        setUserTaskMap(map);
-        setTaskCooldowns(cooldowns);
+        setUserTaskMap(map); setTaskCooldowns(cooldowns);
       }
     }
   };
@@ -137,9 +118,7 @@ const EarnScreen = () => {
     if (user) {
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const { data: completions } = await supabase.from("user_shortlinks")
-        .select("shortlink_id, reward_amount")
-        .eq("user_id", user.id)
-        .gte("completed_at", today.toISOString());
+        .select("shortlink_id, reward_amount").eq("user_id", user.id).gte("completed_at", today.toISOString());
       if (completions) {
         setCompletedShortlinks(new Set(completions.map(c => c.shortlink_id)));
         setShortlinkEarnings(completions.reduce((s, c) => s + Number(c.reward_amount), 0));
@@ -155,15 +134,11 @@ const EarnScreen = () => {
 
     if (user) {
       const { data: views } = await supabase.from("user_ad_views")
-        .select("ad_id, viewed_at")
-        .eq("user_id", user.id)
-        .order("viewed_at", { ascending: false });
+        .select("ad_id, viewed_at").eq("user_id", user.id).order("viewed_at", { ascending: false });
       if (views) {
         const cooldowns: Record<string, Date> = {};
         views.forEach(v => { if (!cooldowns[v.ad_id]) cooldowns[v.ad_id] = new Date(v.viewed_at); });
         setAdCooldowns(cooldowns);
-
-        // Set countdowns for ads
         const cd: Record<string, number> = {};
         data?.forEach(ad => {
           const lastView = cooldowns[ad.id];
@@ -182,60 +157,44 @@ const EarnScreen = () => {
     const status = userTaskMap[task.id];
     if (status === "completed" && !task.is_daily && !task.cooldown_seconds) return;
     if (taskCooldowns[task.id] && taskCooldowns[task.id] > 0) {
-      toast.error(`Wait ${formatTime(taskCooldowns[task.id])} before retrying`);
-      return;
+      toast.error(`Wait ${formatTime(taskCooldowns[task.id])} before retrying`); return;
     }
 
     hapticFeedback.impact("medium");
     setCompleting(task.id);
 
-    // If task has a URL, open it
-    if (task.url) {
-      window.open(task.url, "_blank");
-    }
+    if (task.url) window.open(task.url, "_blank");
 
-    // Check if already completed
     const { data: existing } = await supabase.from("user_tasks")
       .select("id").eq("user_id", user.id).eq("task_id", task.id).eq("status", "completed").maybeSingle();
-    if (existing && !task.is_daily) {
-      toast.info("Task already completed");
-      setCompleting(null);
-      return;
-    }
+    if (existing && !task.is_daily) { toast.info("Task already completed"); setCompleting(null); return; }
 
-    // Award XP FIRST before countdown
     const { error: taskError } = await supabase.from("user_tasks").insert({
       user_id: user.id, task_id: task.id, status: "completed", completed_at: new Date().toISOString(),
     });
     if (taskError) { toast.error("Failed to complete task"); setCompleting(null); return; }
 
-    // Add XP immediately
     await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: task.reward_amount });
-
-    // Add token if reward_type includes token
     if (task.reward_type === "xp_and_token" && task.token_reward_amount > 0) {
       await supabase.rpc("add_tokens", { p_user_id: user.id, p_amount: task.token_reward_amount });
     }
-
     await supabase.from("transactions").insert({
       user_id: user.id, type: "task_reward", amount: task.reward_amount,
       description: `Task: ${task.title}`, reference_id: task.id,
     });
 
     setUserTaskMap(prev => ({ ...prev, [task.id]: "completed" }));
-
     hapticFeedback.notification("success");
-    const rewardMsg = task.reward_type === "xp_and_token" 
+    const rewardMsg = task.reward_type === "xp_and_token"
       ? `+${task.reward_amount} XP & +${task.token_reward_amount} TKN earned!`
       : `+${task.reward_amount} XP earned!`;
     toast.success(rewardMsg);
+    refreshProfile();
 
-    // THEN start the countdown timer (cosmetic only, reward already given)
     if (task.verification_type === "timer" && task.cooldown_seconds > 0) {
       setCountdowns(prev => ({ ...prev, [`task_${task.id}`]: task.cooldown_seconds }));
       setTaskCooldowns(prev => ({ ...prev, [task.id]: task.cooldown_seconds }));
     }
-
     setCompleting(null);
   };
 
@@ -248,21 +207,12 @@ const EarnScreen = () => {
 
     await new Promise(resolve => setTimeout(resolve, link.timer_seconds * 1000));
 
-    await supabase.from("user_shortlinks").insert({
-      user_id: user.id, shortlink_id: link.id, reward_amount: link.reward_amount,
-    });
-
-    // Add XP to profile
+    await supabase.from("user_shortlinks").insert({ user_id: user.id, shortlink_id: link.id, reward_amount: link.reward_amount });
     await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: link.reward_amount });
-
-    // Add token if applicable
     if (link.reward_type === "xp_and_token" && link.token_reward_amount > 0) {
       await supabase.rpc("add_tokens", { p_user_id: user.id, p_amount: link.token_reward_amount });
     }
-
-    await supabase.from("transactions").insert({
-      user_id: user.id, type: "shortlink", amount: link.reward_amount, description: `Shortlink: ${link.title}`,
-    });
+    await supabase.from("transactions").insert({ user_id: user.id, type: "shortlink", amount: link.reward_amount, description: `Shortlink: ${link.title}` });
 
     setCompletedShortlinks(prev => new Set(prev).add(link.id));
     setShortlinkEarnings(prev => prev + link.reward_amount);
@@ -271,6 +221,7 @@ const EarnScreen = () => {
       ? `+${link.reward_amount} XP & +${link.token_reward_amount} TKN earned!`
       : `+${link.reward_amount} XP earned!`;
     toast.success(rewardMsg);
+    refreshProfile();
     setCompleting(null);
     setCountdowns(prev => { const n = { ...prev }; delete n[`sl_${link.id}`]; return n; });
   };
@@ -278,36 +229,26 @@ const EarnScreen = () => {
   const showMonetag = (): Promise<void> => {
     return new Promise((resolve, reject) => {
       const fn = window['show_8914235'];
-      if (typeof fn === 'function') {
-        fn().then(() => resolve()).catch(() => reject(new Error('Ad failed')));
-      } else {
-        reject(new Error('Monetag SDK not loaded'));
-      }
+      if (typeof fn === 'function') { fn().then(() => resolve()).catch(() => reject(new Error('Ad failed'))); }
+      else { reject(new Error('Monetag SDK not loaded')); }
     });
   };
 
   const watchAd = async (ad: AdRow) => {
     if (!user) return;
     const cdKey = `ad_${ad.id}`;
-    if (countdowns[cdKey] && countdowns[cdKey] > 0) {
-      toast.error(`Cooldown: ${formatTime(countdowns[cdKey])}`);
-      return;
-    }
+    if (countdowns[cdKey] && countdowns[cdKey] > 0) { toast.error(`Cooldown: ${formatTime(countdowns[cdKey])}`); return; }
 
     hapticFeedback.impact("medium");
     setCompleting(ad.id);
-
     const totalAds = ad.ads_per_click || 1;
-    
+
     try {
       for (let i = 0; i < totalAds; i++) {
         toast.info(`📺 Ad ${i + 1}/${totalAds}...`);
         setCountdowns(prev => ({ ...prev, [`watching_${ad.id}`]: totalAds - i }));
         await showMonetag();
-        // Small delay between ads
-        if (i < totalAds - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
+        if (i < totalAds - 1) await new Promise(resolve => setTimeout(resolve, 1000));
       }
     } catch (err) {
       toast.error('Ad failed to load. Please try again.');
@@ -316,21 +257,12 @@ const EarnScreen = () => {
       return;
     }
 
-    await supabase.from("user_ad_views").insert({
-      user_id: user.id, ad_id: ad.id, reward_amount: ad.reward_amount,
-    });
-
-    // Add XP to profile
+    await supabase.from("user_ad_views").insert({ user_id: user.id, ad_id: ad.id, reward_amount: ad.reward_amount });
     await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: ad.reward_amount });
-
-    // Add token if applicable
     if (ad.reward_type === "xp_and_token" && ad.token_reward_amount > 0) {
       await supabase.rpc("add_tokens", { p_user_id: user.id, p_amount: ad.token_reward_amount });
     }
-
-    await supabase.from("transactions").insert({
-      user_id: user.id, type: "ad_reward", amount: ad.reward_amount, description: `Ad: ${ad.title}`,
-    });
+    await supabase.from("transactions").insert({ user_id: user.id, type: "ad_reward", amount: ad.reward_amount, description: `Ad: ${ad.title}` });
 
     setAdCooldowns(prev => ({ ...prev, [ad.id]: new Date() }));
     setCountdowns(prev => ({ ...prev, [cdKey]: ad.cooldown_seconds }));
@@ -339,14 +271,14 @@ const EarnScreen = () => {
       ? `+${ad.reward_amount} XP & +${ad.token_reward_amount} TKN earned! (${totalAds} ads watched)`
       : `+${ad.reward_amount} XP earned! (${totalAds} ads watched)`;
     toast.success(rewardMsg);
+    refreshProfile();
     setCompleting(null);
     setCountdowns(prev => { const n = { ...prev }; delete n[`watching_${ad.id}`]; return n; });
   };
 
   const formatTime = (seconds: number) => {
     if (seconds <= 0) return "Ready";
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
+    const m = Math.floor(seconds / 60); const s = seconds % 60;
     return m > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `${s}s`;
   };
 
@@ -366,7 +298,6 @@ const EarnScreen = () => {
 
   return (
     <div className="px-4 pt-6 pb-4">
-      {/* Header */}
       <div className="mb-5">
         <h1 className="text-xl font-display font-bold text-foreground">Earn</h1>
         <p className="text-xs text-muted-foreground mt-0.5">Complete tasks & watch ads to earn XP</p>
@@ -399,7 +330,7 @@ const EarnScreen = () => {
           </TabsTrigger>
         </TabsList>
 
-        {/* ═══════ TASKS ═══════ */}
+        {/* TASKS */}
         <TabsContent value="tasks" className="mt-4 space-y-2.5">
           {loading ? (
             <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
@@ -421,75 +352,44 @@ const EarnScreen = () => {
                 const hasActiveCountdown = countdowns[taskCdKey] && countdowns[taskCdKey] > 0;
 
                 return (
-                  <motion.div
-                    key={task.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                  >
+                  <motion.div key={task.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                     <button
-                      disabled={completed || !!onCooldown || isProcessing}
                       onClick={() => completeTask(task)}
-                      className="w-full text-left glass rounded-2xl p-4 flex items-center gap-3 transition-all hover:scale-[0.99] active:scale-[0.97] disabled:opacity-50"
+                      disabled={completed || !!onCooldown || isProcessing}
+                      className={`w-full glass rounded-xl p-3.5 flex items-center gap-3 text-left transition-all ${
+                        completed ? "opacity-50" : onCooldown ? "opacity-70" : "hover:bg-secondary/30 active:scale-[0.98]"
+                      }`}
                     >
-                      {/* Icon */}
-                      <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${config.gradient} flex items-center justify-center shrink-0 shadow-lg`}>
-                        {isProcessing ? (
-                          <Loader2 className="h-5 w-5 text-white animate-spin" />
-                        ) : completed ? (
-                          <CheckCircle2 className="h-5 w-5 text-white" />
-                        ) : (
-                          <Icon className="h-5 w-5 text-white" />
-                        )}
+                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${config.gradient} flex items-center justify-center flex-shrink-0`}>
+                        {completed ? <CheckCircle2 className="h-5 w-5 text-white" /> : <Icon className="h-5 w-5 text-white" />}
                       </div>
-
-                      {/* Content */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-semibold text-foreground truncate">{task.title}</p>
-                          {task.is_daily && (
-                            <Badge className="text-[8px] px-1 py-0 h-3.5 border-0 bg-warning/20 text-warning">DAILY</Badge>
-                          )}
-                        </div>
-                        {task.description && (
-                          <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{task.description}</p>
+                        <p className={`text-sm font-medium ${completed ? "line-through text-muted-foreground" : "text-foreground"}`}>{task.title}</p>
+                        {task.description && <p className="text-[10px] text-muted-foreground truncate">{task.description}</p>}
+                        {hasActiveCountdown && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Timer className="h-3 w-3 text-warning" />
+                            <span className="text-[10px] text-warning font-mono">{formatTime(countdowns[taskCdKey])}</span>
+                          </div>
                         )}
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge className="text-[8px] px-1.5 py-0 h-3.5 border-0 bg-secondary text-muted-foreground">
-                            {config.label}
-                          </Badge>
-                          {task.cooldown_seconds > 0 && (
-                            <span className="text-[9px] text-accent flex items-center gap-0.5">
-                              <Timer className="h-2.5 w-2.5" />{formatTime(task.cooldown_seconds)}
-                            </span>
-                          )}
-                          {task.url && <ExternalLink className="h-2.5 w-2.5 text-muted-foreground" />}
-                        </div>
-
-                        {/* Active countdown */}
-                        {(hasActiveCountdown || !!onCooldown) && (
-                          <div className="mt-1.5">
-                            <div className="flex items-center gap-1.5">
-                              <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden">
-                                <motion.div
-                                  className="h-full bg-gradient-to-r from-accent to-primary rounded-full"
-                                  animate={{ width: hasActiveCountdown ? `${((task.cooldown_seconds - (countdowns[taskCdKey] || 0)) / task.cooldown_seconds) * 100}%` : "0%" }}
-                                />
-                              </div>
-                              <span className="text-[9px] font-mono text-accent">
-                                {hasActiveCountdown ? formatTime(countdowns[taskCdKey]) : formatTime(taskCooldowns[task.id])}
-                              </span>
-                            </div>
+                        {onCooldown && !hasActiveCountdown && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Clock className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-[10px] text-muted-foreground font-mono">{formatTime(taskCooldowns[task.id])}</span>
                           </div>
                         )}
                       </div>
-
-                      {/* Reward */}
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-bold text-earn">+{task.reward_amount}</p>
-                        <p className="text-[8px] text-muted-foreground uppercase">XP</p>
-                        {task.reward_type === "xp_and_token" && (
-                          <p className="text-[9px] font-semibold text-primary">+{task.token_reward_amount} TKN</p>
+                      <div className="text-right flex-shrink-0">
+                        {isProcessing ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        ) : (
+                          <>
+                            <p className="text-sm font-bold text-earn">+{task.reward_amount}</p>
+                            <p className="text-[9px] text-muted-foreground">XP</p>
+                            {task.reward_type === "xp_and_token" && task.token_reward_amount > 0 && (
+                              <p className="text-[9px] text-primary">+{task.token_reward_amount} TKN</p>
+                            )}
+                          </>
                         )}
                       </div>
                     </button>
@@ -500,7 +400,7 @@ const EarnScreen = () => {
           )}
         </TabsContent>
 
-        {/* ═══════ SHORTLINKS ═══════ */}
+        {/* SHORTLINKS */}
         <TabsContent value="shortlinks" className="mt-4 space-y-2.5">
           {loading ? (
             <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
@@ -510,72 +410,55 @@ const EarnScreen = () => {
               <p className="text-sm font-semibold text-foreground">No shortlinks available</p>
             </div>
           ) : (
-            <>
-              <div className="glass rounded-2xl p-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] text-muted-foreground">Today's progress</span>
-                  <span className="text-xs font-bold text-earn">+{shortlinkEarnings} XP</span>
-                </div>
-                <Progress value={shortlinks.length > 0 ? (completedShortlinks.size / shortlinks.length) * 100 : 0} className="h-1.5 mt-2 bg-muted" />
-              </div>
-              {shortlinks.map((link, i) => {
-                const isDone = completedShortlinks.has(link.id);
-                const isProcessing = completing === link.id;
-                const cdKey = `sl_${link.id}`;
-                const activeCD = countdowns[cdKey] && countdowns[cdKey] > 0;
+            shortlinks.map((link, i) => {
+              const done = completedShortlinks.has(link.id);
+              const cdKey = `sl_${link.id}`;
+              const hasCountdown = countdowns[cdKey] && countdowns[cdKey] > 0;
+              const isProcessing = completing === link.id;
 
-                return (
-                  <motion.div key={link.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                    <button
-                      disabled={isDone || isProcessing}
-                      onClick={() => completeShortlink(link)}
-                      className="w-full text-left glass rounded-2xl p-4 flex items-center gap-3 disabled:opacity-50 transition-all hover:scale-[0.99] active:scale-[0.97]"
-                    >
-                      <div className="w-11 h-11 rounded-xl gradient-earn flex items-center justify-center shrink-0 shadow-lg">
-                        {isProcessing ? (
-                          <Loader2 className="h-5 w-5 text-white animate-spin" />
-                        ) : isDone ? (
-                          <CheckCircle2 className="h-5 w-5 text-white" />
-                        ) : (
-                          <ExternalLink className="h-5 w-5 text-white" />
-                        )}
+              return (
+                <motion.div key={link.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                  <button
+                    onClick={() => completeShortlink(link)}
+                    disabled={done || isProcessing}
+                    className={`w-full glass rounded-xl p-3.5 flex items-center gap-3 text-left transition-all ${
+                      done ? "opacity-50" : "hover:bg-secondary/30 active:scale-[0.98]"
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center flex-shrink-0">
+                      {done ? <CheckCircle2 className="h-5 w-5 text-white" /> : <ExternalLink className="h-5 w-5 text-white" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium ${done ? "line-through text-muted-foreground" : "text-foreground"}`}>{link.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Badge variant="secondary" className="text-[9px] px-1.5 py-0">{link.network}</Badge>
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                          <Timer className="h-2.5 w-2.5" />{link.timer_seconds}s
+                        </span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground">{link.title}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                            <Timer className="h-2.5 w-2.5" />{link.timer_seconds}s
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">• {link.network}</span>
+                      {hasCountdown && (
+                        <div className="mt-1.5">
+                          <Progress value={((link.timer_seconds - countdowns[cdKey]) / link.timer_seconds) * 100} className="h-1" />
+                          <p className="text-[9px] text-warning mt-0.5 font-mono">{formatTime(countdowns[cdKey])}</p>
                         </div>
-                        {activeCD && (
-                          <div className="mt-1.5 flex items-center gap-1.5">
-                            <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden">
-                              <motion.div
-                                className="h-full gradient-earn rounded-full"
-                                animate={{ width: `${((link.timer_seconds - countdowns[cdKey]) / link.timer_seconds) * 100}%` }}
-                              />
-                            </div>
-                            <span className="text-[9px] font-mono text-earn">{formatTime(countdowns[cdKey])}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-bold text-earn">+{link.reward_amount}</p>
-                        <p className="text-[8px] text-muted-foreground uppercase">XP</p>
-                        {link.reward_type === "xp_and_token" && (
-                          <p className="text-[9px] font-semibold text-primary">+{link.token_reward_amount} TKN</p>
-                        )}
-                      </div>
-                    </button>
-                  </motion.div>
-                );
-              })}
-            </>
+                      )}
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      {isProcessing ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : (
+                        <>
+                          <p className="text-sm font-bold text-earn">+{link.reward_amount}</p>
+                          <p className="text-[9px] text-muted-foreground">XP</p>
+                        </>
+                      )}
+                    </div>
+                  </button>
+                </motion.div>
+              );
+            })
           )}
         </TabsContent>
 
-        {/* ═══════ ADS ═══════ */}
+        {/* ADS */}
         <TabsContent value="ads" className="mt-4 space-y-2.5">
           {loading ? (
             <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
@@ -587,7 +470,7 @@ const EarnScreen = () => {
           ) : (
             ads.map((ad, i) => {
               const cdKey = `ad_${ad.id}`;
-              const available = isAdAvailable(ad);
+              const onCd = countdowns[cdKey] && countdowns[cdKey] > 0;
               const isProcessing = completing === ad.id;
               const watchingKey = `watching_${ad.id}`;
               const isWatching = countdowns[watchingKey] && countdowns[watchingKey] > 0;
@@ -595,45 +478,35 @@ const EarnScreen = () => {
               return (
                 <motion.div key={ad.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                   <button
-                    disabled={!available || isProcessing}
                     onClick={() => watchAd(ad)}
-                    className="w-full text-left glass rounded-2xl p-4 flex items-center gap-3 disabled:opacity-50 transition-all hover:scale-[0.99] active:scale-[0.97]"
+                    disabled={!!onCd || isProcessing}
+                    className={`w-full glass rounded-xl p-3.5 flex items-center gap-3 text-left transition-all ${
+                      onCd ? "opacity-70" : "hover:bg-secondary/30 active:scale-[0.98]"
+                    }`}
                   >
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${available ? "gradient-primary" : "bg-muted"}`}>
-                      {isProcessing ? (
-                        <Loader2 className="h-5 w-5 text-white animate-spin" />
-                      ) : (
-                        <Play className="h-5 w-5 text-white" />
-                      )}
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center flex-shrink-0">
+                      <Play className="h-5 w-5 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground">{ad.title}</p>
+                      <p className="text-sm font-medium text-foreground">{ad.title}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <Badge className="text-[8px] px-1.5 py-0 h-3.5 border-0 bg-secondary text-muted-foreground">{ad.ad_type}</Badge>
-                        {(ad.ads_per_click || 1) > 1 && (
-                          <Badge className="text-[8px] px-1.5 py-0 h-3.5 border-0 bg-primary/20 text-primary">{ad.ads_per_click}x ads</Badge>
-                        )}
-                        {!available && countdowns[cdKey] > 0 && (
-                          <span className="text-[9px] font-mono text-warning flex items-center gap-0.5">
-                            <Clock className="h-2.5 w-2.5" />{formatTime(countdowns[cdKey])}
-                          </span>
-                        )}
-                        {available && <span className="text-[9px] text-earn">Ready</span>}
+                        <Badge variant="secondary" className="text-[9px] px-1.5 py-0">{ad.ad_type}</Badge>
+                        {ad.ads_per_click > 1 && <span className="text-[10px] text-muted-foreground">{ad.ads_per_click} ads</span>}
                       </div>
-                      {isWatching && (
-                        <div className="mt-1.5 flex items-center gap-1.5">
-                          <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden">
-                            <motion.div className="h-full gradient-primary rounded-full" animate={{ width: `${((3 - countdowns[watchingKey]) / 3) * 100}%` }} />
-                          </div>
-                          <span className="text-[9px] font-mono text-primary">{countdowns[watchingKey]}s</span>
+                      {onCd && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <Clock className="h-3 w-3 text-warning" />
+                          <span className="text-[10px] text-warning font-mono">{formatTime(countdowns[cdKey])}</span>
                         </div>
                       )}
+                      {isWatching && <p className="text-[10px] text-primary mt-1">📺 Watching...</p>}
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-earn">+{ad.reward_amount}</p>
-                      <p className="text-[8px] text-muted-foreground uppercase">XP</p>
-                      {ad.reward_type === "xp_and_token" && (
-                        <p className="text-[9px] font-semibold text-primary">+{ad.token_reward_amount} TKN</p>
+                    <div className="text-right flex-shrink-0">
+                      {isProcessing ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : (
+                        <>
+                          <p className="text-sm font-bold text-earn">+{ad.reward_amount}</p>
+                          <p className="text-[9px] text-muted-foreground">XP</p>
+                        </>
                       )}
                     </div>
                   </button>

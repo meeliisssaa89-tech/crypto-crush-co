@@ -12,7 +12,7 @@ import DailyBonus from "@/components/modals/DailyBonus";
 import { toast } from "sonner";
 
 const HomeScreen = () => {
-  const { user } = useAuth();
+  const { user, profileVersion, refreshProfile } = useAuth();
   const { isTelegram, user: tgUser } = useTG();
   const [profile, setProfile] = useState<any>(null);
   const [showSpin, setShowSpin] = useState(false);
@@ -25,6 +25,7 @@ const HomeScreen = () => {
   const [completedToday, setCompletedToday] = useState(0);
   const [tickerConfig, setTickerConfig] = useState({ points_usd_rate: 0.001, ticker_enabled: true });
 
+  // Re-fetch profile whenever profileVersion changes (after any reward)
   useEffect(() => {
     if (user) {
       fetchProfile();
@@ -32,7 +33,7 @@ const HomeScreen = () => {
       fetchTodayTasks();
     }
     fetchTickerConfig();
-  }, [user]);
+  }, [user, profileVersion]);
 
   const fetchTickerConfig = async () => {
     const { data } = await supabase.from("app_settings").select("*").eq("key", "ticker_config").single();
@@ -97,12 +98,17 @@ const HomeScreen = () => {
   const handleInviteFriend = () => {
     hapticFeedback.impact("medium");
     if (isTelegram && profile?.referral_code) {
-      const botUrl = `https://t.me/share/url?url=https://t.me/Eg_Token_bot?start=${profile.referral_code}&text=Join%20CryptoMaine%20and%20earn%20crypto!%20🚀`;
+      const botUrl = `https://t.me/share/url?url=https://t.me/Eg_Token_bot?startapp=${profile.referral_code}&text=Join%20CryptoMaine%20and%20earn%20crypto!%20🚀`;
       openTelegramLink(botUrl);
     } else if (profile?.referral_code) {
-      navigator.clipboard.writeText(`https://t.me/Eg_Token_bot?start=${profile.referral_code}`);
+      navigator.clipboard.writeText(`https://t.me/Eg_Token_bot?startapp=${profile.referral_code}`);
       toast.success("Referral link copied!");
     }
+  };
+
+  // Callback for modals to trigger profile refresh
+  const handleReward = () => {
+    refreshProfile();
   };
 
   const streakDays = profile?.streak_days ?? 0;
@@ -167,15 +173,11 @@ const HomeScreen = () => {
         <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/5 -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-white/5 translate-y-1/2 -translate-x-1/2" />
 
-        {/* Price Ticker Ribbon */}
         {tickerConfig.ticker_enabled && (
           <div className="absolute top-0 left-0 z-10">
             <div
               className="bg-white/15 backdrop-blur-sm px-4 py-1 pr-6"
-              style={{
-                clipPath: "polygon(0 0, 100% 0, 85% 100%, 0 100%)",
-                minWidth: "140px",
-              }}
+              style={{ clipPath: "polygon(0 0, 100% 0, 85% 100%, 0 100%)", minWidth: "140px" }}
             >
               <div className="flex items-center gap-1.5">
                 <span className="text-[9px] text-white/60 uppercase tracking-wider">1 XP</span>
@@ -222,9 +224,7 @@ const HomeScreen = () => {
             <div
               key={i}
               className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                i < streakDays
-                  ? "gradient-primary text-white"
-                  : "bg-muted text-muted-foreground"
+                i < streakDays ? "gradient-primary text-white" : "bg-muted text-muted-foreground"
               }`}
             >
               {i + 1}
@@ -235,44 +235,20 @@ const HomeScreen = () => {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-4 gap-2">
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={() => { hapticFeedback.impact("light"); setShowSpin(true); }}
-          className="glass rounded-xl p-3 flex flex-col items-center gap-2"
-        >
-          <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center">
-            <Star className="h-5 w-5 text-white" />
-          </div>
+        <motion.button whileTap={{ scale: 0.95 }} onClick={() => { hapticFeedback.impact("light"); setShowSpin(true); }} className="glass rounded-xl p-3 flex flex-col items-center gap-2">
+          <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center"><Star className="h-5 w-5 text-white" /></div>
           <span className="text-[10px] font-medium text-foreground">Spin</span>
         </motion.button>
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={() => { hapticFeedback.impact("light"); setShowMystery(true); }}
-          className="glass rounded-xl p-3 flex flex-col items-center gap-2"
-        >
-          <div className="w-10 h-10 gradient-warning rounded-xl flex items-center justify-center">
-            <Box className="h-5 w-5 text-white" />
-          </div>
+        <motion.button whileTap={{ scale: 0.95 }} onClick={() => { hapticFeedback.impact("light"); setShowMystery(true); }} className="glass rounded-xl p-3 flex flex-col items-center gap-2">
+          <div className="w-10 h-10 gradient-warning rounded-xl flex items-center justify-center"><Box className="h-5 w-5 text-white" /></div>
           <span className="text-[10px] font-medium text-foreground">Mystery</span>
         </motion.button>
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={() => { hapticFeedback.impact("light"); setShowDaily(true); }}
-          className="glass rounded-xl p-3 flex flex-col items-center gap-2"
-        >
-          <div className="w-10 h-10 gradient-earn rounded-xl flex items-center justify-center">
-            <Calendar className="h-5 w-5 text-white" />
-          </div>
+        <motion.button whileTap={{ scale: 0.95 }} onClick={() => { hapticFeedback.impact("light"); setShowDaily(true); }} className="glass rounded-xl p-3 flex flex-col items-center gap-2">
+          <div className="w-10 h-10 gradient-earn rounded-xl flex items-center justify-center"><Calendar className="h-5 w-5 text-white" /></div>
           <span className="text-[10px] font-medium text-foreground">Daily</span>
         </motion.button>
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={handleInviteFriend}
-          className="glass rounded-xl p-3 flex flex-col items-center gap-2"
-        >
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-accent/20">
-            <Send className="h-5 w-5 text-accent" />
-          </div>
+        <motion.button whileTap={{ scale: 0.95 }} onClick={handleInviteFriend} className="glass rounded-xl p-3 flex flex-col items-center gap-2">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-accent/20"><Send className="h-5 w-5 text-accent" /></div>
           <span className="text-[10px] font-medium text-foreground">Invite</span>
         </motion.button>
       </div>
@@ -332,7 +308,7 @@ const HomeScreen = () => {
                     <p className="text-[10px] text-muted-foreground">{formatTime(item.created_at)}</p>
                   </div>
                 </div>
-                <span className="text-sm font-semibold text-earn">+{item.amount} coins</span>
+                <span className="text-sm font-semibold text-earn">+{item.amount} XP</span>
               </div>
             ))
           )}
@@ -376,7 +352,7 @@ const HomeScreen = () => {
                           <p className="text-[10px] text-muted-foreground">{formatTime(item.created_at)}</p>
                         </div>
                       </div>
-                      <span className="text-sm font-semibold text-earn">+{item.amount} coins</span>
+                      <span className="text-sm font-semibold text-earn">+{item.amount} XP</span>
                     </div>
                   ))
                 )}
@@ -386,9 +362,9 @@ const HomeScreen = () => {
         )}
       </AnimatePresence>
 
-      <SpinWheel open={showSpin} onOpenChange={setShowSpin} />
-      <MysteryBox open={showMystery} onOpenChange={setShowMystery} />
-      <DailyBonus open={showDaily} onOpenChange={setShowDaily} />
+      <SpinWheel open={showSpin} onOpenChange={setShowSpin} onReward={handleReward} />
+      <MysteryBox open={showMystery} onOpenChange={setShowMystery} onReward={handleReward} />
+      <DailyBonus open={showDaily} onOpenChange={setShowDaily} onReward={handleReward} />
     </div>
   );
 };
