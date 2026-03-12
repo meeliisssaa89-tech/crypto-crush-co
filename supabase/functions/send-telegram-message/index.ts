@@ -87,18 +87,45 @@ Deno.serve(async (req) => {
     }
 
     if (broadcast) {
-      const { data: profiles } = await supabase
+      // ✅ تحسين البث: جلب المستخدمين الفريدين فقط
+      const { data: profiles, error: fetchError } = await supabase
         .from("profiles")
-        .select("telegram_id")
-        .not("telegram_id", "is", null);
+        .select("telegram_id, user_id")
+        .not("telegram_id", "is", null)
+        .order("created_at", { ascending: false }); // احصل على أحدث الملفات الشخصية
+
+      if (fetchError) {
+        console.error("Error fetching profiles:", fetchError);
+        return new Response(
+          JSON.stringify({ error: `Failed to fetch profiles: ${fetchError.message}` }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
       if (profiles && profiles.length > 0) {
+        // ✅ تتبع المستخدمين الذين تم إرسالهم لهم الرسالة لتجنب التكرار
+        const sentToTelegramIds = new Set<number>();
+
         for (const profile of profiles) {
-          await sendToChat(profile.telegram_id!);
+          const telegramId = profile.telegram_id;
+
+          // تجنب إرسال نفس الرسالة مرتين لنفس المستخدم
+          if (sentToTelegramIds.has(telegramId)) {
+            console.log(`Skipping duplicate telegram_id: ${telegramId}`);
+            continue;
+          }
+
+          await sendToChat(telegramId);
+          sentToTelegramIds.add(telegramId);
+
+          // تأخير بين الرسائل لتجنب حد السرعة من Telegram
           await new Promise((r) => setTimeout(r, 35));
         }
+
+        console.log(`Broadcast sent to ${sentToTelegramIds.size} unique users`);
       }
     } else if (chat_id) {
+      // إرسال رسالة لمستخدم محدد
       await sendToChat(chat_id);
     } else if (!channel_id) {
       return new Response(
@@ -113,24 +140,41 @@ Deno.serve(async (req) => {
     // Log activity
     const authHeader = req.headers.get("Authorization");
     if (authHeader) {
-      const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-        global: { headers: { Authorization: authHeader } },
-      });
-      const { data: { user } } = await userClient.auth.getUser();
-      if (user) {
-        await supabase.from("activity_logs").insert({
-          user_id: user.id,
-          action: broadcast ? "broadcast_message" : "send_message",
-          details: { message: message.substring(0, 100), success_count: successCount, fail_count: failCount },
+      try {
+        const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+          global: { headers: { Authorization: authHeader } },
         });
+        const { data: { user } } = await userClient.auth.getUser();
+        if (user) {
+          await supabase.from("activity_logs").insert({
+            user_id: user.id,
+            action: broadcast ? "broadcast_message" : "send_message",
+            details: {
+              message: message.substring(0, 100),
+              success_count: successCount,
+              fail_count: failCount,
+              timestamp: new Date().toISOString(),
+            },
+          });
+        }
+      } catch (logErr) {
+        console.error("Error logging activity:", logErr);
+        // Don't throw - logging failure shouldn't break the message sending
       }
     }
 
     return new Response(
-      JSON.stringify({ success: true, sent: successCount, failed: failCount, results }),
+      JSON.stringify({
+        success: true,
+        sent: successCount,
+        failed: failCount,
+        results,
+        timestamp: new Date().toISOString(),
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
+    console.error("Telegram message error:", err);
     return new Response(
       JSON.stringify({ error: String(err) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
