@@ -59,11 +59,10 @@ function generateReferralCode(): string {
 }
 
 /**
- * Create a unique email using timestamp to avoid conflicts
+ * Create a unique email using telegram ID only (consistent across sessions)
  */
 function generateUniqueEmail(telegramId: number): string {
-  const timestamp = Date.now();
-  return `tg_${telegramId}_${timestamp}@telegram.user`;
+  return `tg_${telegramId}@telegram.user`;
 }
 
 /**
@@ -81,6 +80,18 @@ async function handleNewUser(
   const referralCode = generateReferralCode();
 
   // 🆕 إنشاء مستخدم جديد
+  // Check if user already exists to avoid duplicates
+  try {
+    const { data: existingUser } = await supabase.auth.admin.getUserById(uniqueEmail);
+    if (existingUser?.user?.id) {
+      console.log(`User already exists with email: ${uniqueEmail}`);
+      return existingUser.user.id;
+    }
+  } catch (err) {
+    // User doesn't exist, continue with creation
+    console.log(`User does not exist, creating new user for email: ${uniqueEmail}`);
+  }
+
   const { data: newUser, error: createUserError } =
     await supabase.auth.admin.createUser({
       email: uniqueEmail,
