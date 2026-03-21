@@ -61,7 +61,7 @@ const AirdropHeroCard = ({ totalTokens, claimableTokens, claimedTokens, lockedTo
               />
             )}
             <div className="flex items-center gap-1.5">
-              <span className="text-[9px] text-white/60 uppercase tracking-wider">1 TKN</span>
+              <span className="text-[9px] text-white/60 uppercase tracking-wider">1 EG Coin</span>
               <span className="text-[10px] font-bold text-white">= ${tickerConfig.token_usd_rate}</span>
               <TrendingUp className="h-2.5 w-2.5 text-emerald-300" />
             </div>
