@@ -138,7 +138,7 @@ const WalletScreen = () => {
                 <img src={tickerConfig.token_image_url} alt="Token" className="w-5 h-5 rounded-full object-cover border border-white/20" />
               )}
               <div className="flex items-center gap-1.5">
-                <span className="text-[9px] text-white/60 uppercase tracking-wider">1 TKN</span>
+                <span className="text-[9px] text-white/60 uppercase tracking-wider">1 EG Coin</span>
                 <span className="text-[10px] font-bold text-white">= ${tickerConfig.token_usd_rate}</span>
                 <TrendingUp className="h-2.5 w-2.5 text-emerald-300" />
               </div>
