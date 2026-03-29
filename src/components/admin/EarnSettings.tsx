@@ -5,15 +5,17 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
 import {
   ListChecks, Link2, Users, MessageSquare, Download, FileText, Play,
   Plus, Trash2, Edit3, Loader2, Clock, ExternalLink, Eye, EyeOff,
   Megaphone, Globe, Timer, CheckCircle2, BarChart3, TrendingUp, Coins,
+  Target, Sparkles, Trophy,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-type EarnTab = "tasks" | "shortlinks" | "ads";
+type EarnTab = "tasks" | "shortlinks" | "ads" | "partner";
 
 const TASK_TYPES = [
   { value: "social", label: "Social Follow", icon: "📱" },
@@ -83,7 +85,7 @@ const EarnSettings = () => {
     if (t.data) setTasks(t.data);
     if (s.data) setShortlinks(s.data);
     if (a.data) setAds(a.data);
-    await fetchAdStats();
+    await Promise.all([fetchAdStats(), fetchPartnerTasks()]);
     setLoading(false);
   };
 
@@ -271,6 +273,81 @@ const EarnSettings = () => {
     fetchAll();
   };
 
+  // ─── PARTNER TASKS ───
+  const [partnerTasks, setPartnerTasks] = useState<any[]>([]);
+  const [partnerModal, setPartnerModal] = useState<any | null>(null);
+  const [partnerForm, setPartnerForm] = useState({
+    title: "", description: "", reward_amount: 500, reward_type: "xp",
+    token_reward_amount: 0, task_type: "tasks_completed", target_count: 10, is_active: true,
+  });
+  const [partnerStats, setPartnerStats] = useState<Record<string, number>>({});
+
+  const fetchPartnerTasks = async () => {
+    const { data } = await supabase.from("partner_tasks").select("*").order("created_at", { ascending: true });
+    if (data) setPartnerTasks(data);
+    const { data: progress } = await supabase.from("user_partner_tasks").select("partner_task_id, completed");
+    if (progress) {
+      const counts: Record<string, number> = {};
+      progress.forEach((p: any) => {
+        if (p.completed) counts[p.partner_task_id] = (counts[p.partner_task_id] || 0) + 1;
+      });
+      setPartnerStats(counts);
+    }
+  };
+
+  const openPartnerModal = (pt?: any) => {
+    if (pt) {
+      setPartnerForm({
+        title: pt.title, description: pt.description || "",
+        reward_amount: pt.reward_amount, reward_type: pt.reward_type || "xp",
+        token_reward_amount: pt.token_reward_amount || 0,
+        task_type: pt.task_type, target_count: pt.target_count, is_active: pt.is_active,
+      });
+      setPartnerModal(pt);
+    } else {
+      setPartnerForm({ title: "", description: "", reward_amount: 500, reward_type: "xp", token_reward_amount: 0, task_type: "tasks_completed", target_count: 10, is_active: true });
+      setPartnerModal({});
+      setIsCreating(true);
+    }
+  };
+
+  const savePartnerTask = async () => {
+    if (!partnerForm.title.trim()) { toast.error("Title required"); return; }
+    const payload = {
+      title: partnerForm.title.trim(),
+      description: partnerForm.description || null,
+      reward_amount: Number(partnerForm.reward_amount),
+      reward_type: partnerForm.reward_type,
+      token_reward_amount: partnerForm.reward_type === "xp_and_token" ? Number(partnerForm.token_reward_amount) : 0,
+      task_type: partnerForm.task_type,
+      target_count: Number(partnerForm.target_count),
+      is_active: partnerForm.is_active,
+    };
+
+    if (isCreating || !partnerModal?.id) {
+      const { error } = await supabase.from("partner_tasks").insert(payload);
+      if (error) { toast.error(error.message); return; }
+      toast.success("Partner task created!");
+    } else {
+      const { error } = await supabase.from("partner_tasks").update(payload).eq("id", partnerModal.id);
+      if (error) { toast.error(error.message); return; }
+      toast.success("Partner task updated!");
+    }
+    setPartnerModal(null); setIsCreating(false); fetchPartnerTasks();
+  };
+
+  const deletePartnerTask = async (id: string) => {
+    if (!confirm("Delete this partner task? All user progress will also be deleted.")) return;
+    await supabase.from("user_partner_tasks").delete().eq("partner_task_id", id);
+    await supabase.from("partner_tasks").delete().eq("id", id);
+    toast.success("Deleted"); fetchPartnerTasks();
+  };
+
+  const togglePartnerTask = async (id: string, active: boolean) => {
+    await supabase.from("partner_tasks").update({ is_active: !active }).eq("id", id);
+    fetchPartnerTasks();
+  };
+
   const getTypeInfo = (type: string) => TASK_TYPES.find(t => t.value === type) || TASK_TYPES[0];
 
   if (loading) {
@@ -280,11 +357,12 @@ const EarnSettings = () => {
   return (
     <div className="space-y-4">
       {/* Tabs */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         {([
           { id: "tasks" as const, label: "Tasks", icon: ListChecks, count: tasks.length },
           { id: "shortlinks" as const, label: "Shortlinks", icon: Link2, count: shortlinks.length },
           { id: "ads" as const, label: "Ads", icon: Play, count: ads.length },
+          { id: "partner" as const, label: "Partner", icon: Target, count: partnerTasks.length },
         ]).map((tab) => (
           <button
             key={tab.id}
@@ -629,6 +707,80 @@ const EarnSettings = () => {
         </DialogContent>
       </Dialog>
 
+      {/* ═══════════ PARTNER TASKS TAB ═══════════ */}
+      {activeTab === "partner" && (
+        <div className="space-y-3">
+          <div className="glass rounded-xl p-3 border border-primary/20">
+            <div className="flex items-center gap-2 mb-1">
+              <Trophy className="h-4 w-4 text-warning" />
+              <span className="text-sm font-semibold text-foreground">Partner Tasks (Milestones)</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Milestone tasks that track user progress automatically. Types: complete X tasks, watch X ads, invite X friends.
+            </p>
+          </div>
+
+          <Button onClick={() => openPartnerModal()} className="w-full gradient-earn text-white border-0 gap-2">
+            <Plus className="h-4 w-4" /> Add Partner Task
+          </Button>
+
+          {partnerTasks.length === 0 ? (
+            <div className="glass rounded-xl p-6 text-center">
+              <Target className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No partner tasks yet. Create your first milestone!</p>
+            </div>
+          ) : (
+            partnerTasks.map((pt) => (
+              <div key={pt.id} className="glass rounded-xl p-3.5">
+                <div className="flex items-start gap-3">
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                    pt.task_type === "tasks_completed" ? "bg-violet-500/20" :
+                    pt.task_type === "ads_watched" ? "bg-orange-500/20" :
+                    "bg-amber-500/20"
+                  }`}>
+                    {pt.task_type === "tasks_completed" ? <Sparkles className="h-4 w-4 text-violet-400" /> :
+                     pt.task_type === "ads_watched" ? <Play className="h-4 w-4 text-orange-400" /> :
+                     <Users className="h-4 w-4 text-amber-400" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground truncate">{pt.title}</p>
+                      <Badge className={`text-[9px] px-1.5 py-0 h-4 border-0 ${pt.is_active ? "bg-earn/20 text-earn" : "bg-muted text-muted-foreground"}`}>
+                        {pt.is_active ? "active" : "paused"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5">
+                        {pt.task_type === "tasks_completed" ? "Tasks" : pt.task_type === "ads_watched" ? "Ads" : "Invites"}
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground">Goal: {pt.target_count}</span>
+                      <span className="text-[10px] text-earn">+{pt.reward_amount} XP</span>
+                      {pt.reward_type === "xp_and_token" && pt.token_reward_amount > 0 && (
+                        <span className="text-[10px] text-primary">+{pt.token_reward_amount} TKN</span>
+                      )}
+                      {partnerStats[pt.id] > 0 && (
+                        <span className="text-[10px] text-warning">{partnerStats[pt.id]} claimed</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button onClick={() => togglePartnerTask(pt.id, pt.is_active)} className="p-1.5 rounded-lg hover:bg-secondary/50">
+                      {pt.is_active ? <Eye className="h-3.5 w-3.5 text-earn" /> : <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />}
+                    </button>
+                    <button onClick={() => { setIsCreating(false); openPartnerModal(pt); }} className="p-1.5 rounded-lg hover:bg-secondary/50 text-muted-foreground">
+                      <Edit3 className="h-3.5 w-3.5" />
+                    </button>
+                    <button onClick={() => deletePartnerTask(pt.id)} className="p-1.5 rounded-lg hover:bg-secondary/50 text-destructive">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
       {/* ═══════ AD MODAL ═══════ */}
       <Dialog open={!!adModal} onOpenChange={() => { setAdModal(null); setIsCreating(false); }}>
         <DialogContent className="glass border-border max-w-[400px]">
@@ -689,6 +841,83 @@ const EarnSettings = () => {
             </div>
             <Button onClick={saveAd} className="w-full gradient-primary text-white border-0">
               {isCreating ? "Create Ad" : "Save Changes"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* ═══════ PARTNER TASK MODAL ═══════ */}
+      <Dialog open={!!partnerModal} onOpenChange={() => { setPartnerModal(null); setIsCreating(false); }}>
+        <DialogContent className="glass border-border max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="text-foreground font-display">{isCreating ? "Create" : "Edit"} Partner Task</DialogTitle>
+            <DialogDescription className="text-muted-foreground">Milestone task with automatic progress tracking</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input placeholder="Task title" value={partnerForm.title} onChange={e => setPartnerForm({ ...partnerForm, title: e.target.value })} className="bg-secondary/50" />
+            <Textarea placeholder="Description (optional)" value={partnerForm.description} onChange={e => setPartnerForm({ ...partnerForm, description: e.target.value })} className="bg-secondary/50 h-14 text-xs" />
+
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Task Type (What counts toward progress)</label>
+              <div className="grid grid-cols-1 gap-1.5">
+                {[
+                  { value: "tasks_completed", label: "✅ Complete Tasks", desc: "Counts every task the user completes" },
+                  { value: "ads_watched", label: "📺 Watch Ads", desc: "Counts every ad viewed" },
+                  { value: "referrals_invited", label: "👥 Invite Friends", desc: "Counts every successful referral" },
+                ].map(tt => (
+                  <button key={tt.value} onClick={() => setPartnerForm({ ...partnerForm, task_type: tt.value })}
+                    className={`flex items-start gap-2 px-3 py-2 rounded-lg text-xs transition-all text-left ${
+                      partnerForm.task_type === tt.value ? "gradient-primary text-white" : "glass text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <div>
+                      <p className="font-medium">{tt.label}</p>
+                      <p className={`text-[10px] ${partnerForm.task_type === tt.value ? "text-white/70" : "text-muted-foreground"}`}>{tt.desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Reward Type</label>
+              <div className="flex gap-1.5">
+                {[{ value: "xp", label: "XP Only" }, { value: "xp_and_token", label: "XP + Token" }].map(rt => (
+                  <button key={rt.value} onClick={() => setPartnerForm({ ...partnerForm, reward_type: rt.value })}
+                    className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                      partnerForm.reward_type === rt.value ? "gradient-primary text-white" : "glass text-muted-foreground"
+                    }`}>{rt.label}</button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">XP Reward</label>
+                <Input type="number" value={partnerForm.reward_amount} onChange={e => setPartnerForm({ ...partnerForm, reward_amount: Number(e.target.value) })} className="bg-secondary/50" />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Goal Count</label>
+                <Input type="number" min={1} value={partnerForm.target_count} onChange={e => setPartnerForm({ ...partnerForm, target_count: Number(e.target.value) })} className="bg-secondary/50" />
+              </div>
+            </div>
+
+            {partnerForm.reward_type === "xp_and_token" && (
+              <div>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Token Reward</label>
+                <Input type="number" value={partnerForm.token_reward_amount} onChange={e => setPartnerForm({ ...partnerForm, token_reward_amount: Number(e.target.value) })} className="bg-secondary/50" />
+              </div>
+            )}
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-foreground">Active</p>
+                <p className="text-[10px] text-muted-foreground">Show to users</p>
+              </div>
+              <Switch checked={partnerForm.is_active} onCheckedChange={v => setPartnerForm({ ...partnerForm, is_active: v })} />
+            </div>
+
+            <Button onClick={savePartnerTask} className="w-full gradient-primary text-white border-0">
+              {isCreating ? "Create Partner Task" : "Save Changes"}
             </Button>
           </div>
         </DialogContent>
