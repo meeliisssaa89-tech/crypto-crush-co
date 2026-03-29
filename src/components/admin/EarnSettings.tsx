@@ -283,13 +283,15 @@ const EarnSettings = () => {
   const [partnerStats, setPartnerStats] = useState<Record<string, number>>({});
 
   const fetchPartnerTasks = async () => {
-    const { data } = await supabase.from("partner_tasks").select("*").order("created_at", { ascending: true });
+    const { data, error } = await supabase.rpc("get_partner_tasks_admin" as any);
     if (data) setPartnerTasks(data);
-    const { data: progress } = await supabase.from("user_partner_tasks").select("partner_task_id, completed");
-    if (progress) {
+    if (error) console.error("fetchPartnerTasks:", error.message);
+
+    const { data: stats } = await supabase.rpc("get_partner_task_stats" as any);
+    if (stats) {
       const counts: Record<string, number> = {};
-      progress.forEach((p: any) => {
-        if (p.completed) counts[p.partner_task_id] = (counts[p.partner_task_id] || 0) + 1;
+      (stats as any[]).forEach((s: any) => {
+        counts[s.partner_task_id] = Number(s.completed_count);
       });
       setPartnerStats(counts);
     }
@@ -313,23 +315,33 @@ const EarnSettings = () => {
 
   const savePartnerTask = async () => {
     if (!partnerForm.title.trim()) { toast.error("Title required"); return; }
-    const payload = {
-      title: partnerForm.title.trim(),
-      description: partnerForm.description || null,
-      reward_amount: Number(partnerForm.reward_amount),
-      reward_type: partnerForm.reward_type,
-      token_reward_amount: partnerForm.reward_type === "xp_and_token" ? Number(partnerForm.token_reward_amount) : 0,
-      task_type: partnerForm.task_type,
-      target_count: Number(partnerForm.target_count),
-      is_active: partnerForm.is_active,
-    };
+    const tokenReward = partnerForm.reward_type === "xp_and_token" ? Number(partnerForm.token_reward_amount) : 0;
 
     if (isCreating || !partnerModal?.id) {
-      const { error } = await supabase.from("partner_tasks").insert(payload);
+      const { error } = await supabase.rpc("create_partner_task" as any, {
+        p_title: partnerForm.title.trim(),
+        p_description: partnerForm.description || null,
+        p_reward_amount: Number(partnerForm.reward_amount),
+        p_reward_type: partnerForm.reward_type,
+        p_token_reward_amount: tokenReward,
+        p_task_type: partnerForm.task_type,
+        p_target_count: Number(partnerForm.target_count),
+        p_is_active: partnerForm.is_active,
+      });
       if (error) { toast.error(error.message); return; }
       toast.success("Partner task created!");
     } else {
-      const { error } = await supabase.from("partner_tasks").update(payload).eq("id", partnerModal.id);
+      const { error } = await supabase.rpc("update_partner_task" as any, {
+        p_id: partnerModal.id,
+        p_title: partnerForm.title.trim(),
+        p_description: partnerForm.description || null,
+        p_reward_amount: Number(partnerForm.reward_amount),
+        p_reward_type: partnerForm.reward_type,
+        p_token_reward_amount: tokenReward,
+        p_task_type: partnerForm.task_type,
+        p_target_count: Number(partnerForm.target_count),
+        p_is_active: partnerForm.is_active,
+      });
       if (error) { toast.error(error.message); return; }
       toast.success("Partner task updated!");
     }
@@ -338,13 +350,13 @@ const EarnSettings = () => {
 
   const deletePartnerTask = async (id: string) => {
     if (!confirm("Delete this partner task? All user progress will also be deleted.")) return;
-    await supabase.from("user_partner_tasks").delete().eq("partner_task_id", id);
-    await supabase.from("partner_tasks").delete().eq("id", id);
+    const { error } = await supabase.rpc("delete_partner_task" as any, { p_id: id });
+    if (error) { toast.error(error.message); return; }
     toast.success("Deleted"); fetchPartnerTasks();
   };
 
   const togglePartnerTask = async (id: string, active: boolean) => {
-    await supabase.from("partner_tasks").update({ is_active: !active }).eq("id", id);
+    await supabase.rpc("toggle_partner_task" as any, { p_id: id, p_is_active: !active });
     fetchPartnerTasks();
   };
 
