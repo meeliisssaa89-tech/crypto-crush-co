@@ -183,13 +183,26 @@ const EarnScreen = () => {
   };
 
   const fetchPartnerTasks = async () => {
-    const { data, error } = await supabase.rpc("get_partner_tasks_active" as any);
-    if (data) setPartnerTasks(data as PartnerTask[]);
-    if (error) console.error("fetchPartnerTasks:", error.message);
+    // Load partner task definitions from app_settings (bypasses schema cache)
+    const { data: settingsData } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "partner_tasks_config")
+      .maybeSingle();
 
-    if (user) {
-      const { data: userProgress } = await supabase.rpc("get_user_partner_tasks" as any, { p_user_id: user.id });
-      if (userProgress) setUserPartnerTasks(userProgress as UserPartnerTask[]);
+    const allTasks: PartnerTask[] = (settingsData?.value && Array.isArray(settingsData.value))
+      ? (settingsData.value as PartnerTask[]).filter(t => t.is_active)
+      : [];
+    setPartnerTasks(allTasks);
+
+    // Load user progress from user_partner_tasks table (via rpc if available, else silently skip)
+    if (user && allTasks.length > 0) {
+      try {
+        const { data: userProgress } = await supabase.rpc("get_user_partner_tasks" as any, { p_user_id: user.id });
+        if (userProgress) setUserPartnerTasks(userProgress as UserPartnerTask[]);
+      } catch {
+        // Table may not exist yet - progress will start fresh
+      }
     }
   };
 
@@ -323,6 +336,35 @@ const EarnScreen = () => {
     setCountdowns(prev => { const n = { ...prev }; delete n[`watching_${ad.id}`]; return n; });
   };
 
+  // Upsert user progress - tries RPC first, then direct table, then local-only
+  const upsertProgress = async (
+    ptId: string, newCount: number, isCompleted: boolean, completedAt: string | null
+  ): Promise<string | null> => {
+    // Try RPC function
+    try {
+      const { data, error } = await supabase.rpc("upsert_user_partner_task" as any, {
+        p_user_id: user!.id, p_partner_task_id: ptId,
+        p_current_count: newCount, p_completed: isCompleted, p_completed_at: completedAt,
+      });
+      if (!error) return data as string;
+    } catch { /* RPC not available yet */ }
+
+    // Try direct table access
+    try {
+      const { data, error } = await (supabase as any)
+        .from("user_partner_tasks")
+        .upsert({
+          user_id: user!.id, partner_task_id: ptId,
+          current_count: newCount, completed: isCompleted, completed_at: completedAt,
+        }, { onConflict: "user_id,partner_task_id" })
+        .select("id")
+        .single();
+      if (!error && data) return data.id;
+    } catch { /* Table not available yet, track locally only */ }
+
+    return null;
+  };
+
   // Update partner task progress client-side
   const updatePartnerTaskProgress = async (taskType: string) => {
     if (!user) return;
@@ -333,26 +375,19 @@ const EarnScreen = () => {
       for (const pt of relevantTasks) {
         const existingIdx = updatedProgress.findIndex(upt => upt.partner_task_id === pt.id);
         const existing = existingIdx >= 0 ? updatedProgress[existingIdx] : null;
-
         if (existing?.completed) continue;
 
         const newCount = (existing?.current_count || 0) + 1;
         const isNowCompleted = newCount >= pt.target_count;
         const completedAt = isNowCompleted ? new Date().toISOString() : null;
 
-        const { data: upserted } = await supabase.rpc("upsert_user_partner_task" as any, {
-          p_user_id: user.id,
-          p_partner_task_id: pt.id,
-          p_current_count: newCount,
-          p_completed: isNowCompleted,
-          p_completed_at: completedAt,
-        });
+        const newId = await upsertProgress(pt.id, newCount, isNowCompleted, completedAt);
 
         if (existing) {
           updatedProgress[existingIdx] = { ...existing, current_count: newCount, completed: isNowCompleted };
-        } else if (upserted) {
+        } else {
           updatedProgress.push({
-            id: upserted as string,
+            id: newId || pt.id,
             partner_task_id: pt.id,
             current_count: newCount,
             completed: isNowCompleted,
