@@ -183,17 +183,13 @@ const EarnScreen = () => {
   };
 
   const fetchPartnerTasks = async () => {
-    const { data } = await supabase.from("partner_tasks")
-      .select("id, title, description, reward_amount, reward_type, token_reward_amount, task_type, target_count, is_active")
-      .eq("is_active", true)
-      .order("created_at", { ascending: true });
-    if (data) setPartnerTasks(data);
+    const { data, error } = await supabase.rpc("get_partner_tasks_active" as any);
+    if (data) setPartnerTasks(data as PartnerTask[]);
+    if (error) console.error("fetchPartnerTasks:", error.message);
 
-    if (user && data && data.length > 0) {
-      const { data: userProgress } = await supabase.from("user_partner_tasks")
-        .select("id, partner_task_id, current_count, completed, completed_at")
-        .eq("user_id", user.id);
-      if (userProgress) setUserPartnerTasks(userProgress);
+    if (user) {
+      const { data: userProgress } = await supabase.rpc("get_user_partner_tasks" as any, { p_user_id: user.id });
+      if (userProgress) setUserPartnerTasks(userProgress as UserPartnerTask[]);
     }
   };
 
@@ -342,27 +338,26 @@ const EarnScreen = () => {
 
         const newCount = (existing?.current_count || 0) + 1;
         const isNowCompleted = newCount >= pt.target_count;
+        const completedAt = isNowCompleted ? new Date().toISOString() : null;
+
+        const { data: upserted } = await supabase.rpc("upsert_user_partner_task" as any, {
+          p_user_id: user.id,
+          p_partner_task_id: pt.id,
+          p_current_count: newCount,
+          p_completed: isNowCompleted,
+          p_completed_at: completedAt,
+        });
 
         if (existing) {
-          const { error } = await supabase.from("user_partner_tasks").update({
-            current_count: newCount,
-            completed: isNowCompleted,
-            completed_at: isNowCompleted ? new Date().toISOString() : null,
-          }).eq("id", existing.id);
-
-          if (!error) {
-            updatedProgress[existingIdx] = { ...existing, current_count: newCount, completed: isNowCompleted };
-          }
-        } else {
-          const { data: newRecord } = await supabase.from("user_partner_tasks").insert({
-            user_id: user.id,
+          updatedProgress[existingIdx] = { ...existing, current_count: newCount, completed: isNowCompleted };
+        } else if (upserted) {
+          updatedProgress.push({
+            id: upserted as string,
             partner_task_id: pt.id,
             current_count: newCount,
             completed: isNowCompleted,
-            completed_at: isNowCompleted ? new Date().toISOString() : null,
-          }).select().single();
-
-          if (newRecord) updatedProgress.push(newRecord);
+            completed_at: completedAt,
+          });
         }
 
         if (isNowCompleted) {
@@ -398,12 +393,13 @@ const EarnScreen = () => {
 
     setClaimingPartner(pt.id);
     try {
-      if (userProgress) {
-        await supabase.from("user_partner_tasks").update({
-          completed: true,
-          completed_at: new Date().toISOString(),
-        }).eq("id", userProgress.id);
-      }
+      await supabase.rpc("upsert_user_partner_task" as any, {
+        p_user_id: user.id,
+        p_partner_task_id: pt.id,
+        p_current_count: currentCount,
+        p_completed: true,
+        p_completed_at: new Date().toISOString(),
+      });
 
       await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: pt.reward_amount });
       if (pt.reward_type === "xp_and_token" && pt.token_reward_amount > 0) {
@@ -810,4 +806,3 @@ const EarnScreen = () => {
 };
 
 export default EarnScreen;
-
