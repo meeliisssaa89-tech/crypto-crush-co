@@ -282,19 +282,28 @@ const EarnSettings = () => {
   });
   const [partnerStats, setPartnerStats] = useState<Record<string, number>>({});
 
-  const fetchPartnerTasks = async () => {
-    const { data, error } = await supabase.rpc("get_partner_tasks_admin" as any);
-    if (data) setPartnerTasks(data);
-    if (error) console.error("fetchPartnerTasks:", error.message);
+  // Partner tasks are stored in app_settings under key "partner_tasks_config"
+  // This avoids PostgREST schema cache issues entirely
+  const loadPartnerTasksFromSettings = async (): Promise<any[]> => {
+    const { data } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "partner_tasks_config")
+      .maybeSingle();
+    if (data?.value && Array.isArray(data.value)) return data.value;
+    return [];
+  };
 
-    const { data: stats } = await supabase.rpc("get_partner_task_stats" as any);
-    if (stats) {
-      const counts: Record<string, number> = {};
-      (stats as any[]).forEach((s: any) => {
-        counts[s.partner_task_id] = Number(s.completed_count);
-      });
-      setPartnerStats(counts);
-    }
+  const savePartnerTasksToSettings = async (tasks: any[]) => {
+    const { error } = await supabase
+      .from("app_settings")
+      .upsert({ key: "partner_tasks_config", value: tasks as any }, { onConflict: "key" });
+    if (error) throw error;
+  };
+
+  const fetchPartnerTasks = async () => {
+    const tasks = await loadPartnerTasksFromSettings();
+    setPartnerTasks(tasks);
   };
 
   const openPartnerModal = (pt?: any) => {
@@ -316,47 +325,61 @@ const EarnSettings = () => {
   const savePartnerTask = async () => {
     if (!partnerForm.title.trim()) { toast.error("Title required"); return; }
     const tokenReward = partnerForm.reward_type === "xp_and_token" ? Number(partnerForm.token_reward_amount) : 0;
+    const existing = await loadPartnerTasksFromSettings();
 
     if (isCreating || !partnerModal?.id) {
-      const { error } = await supabase.rpc("create_partner_task" as any, {
-        p_title: partnerForm.title.trim(),
-        p_description: partnerForm.description || null,
-        p_reward_amount: Number(partnerForm.reward_amount),
-        p_reward_type: partnerForm.reward_type,
-        p_token_reward_amount: tokenReward,
-        p_task_type: partnerForm.task_type,
-        p_target_count: Number(partnerForm.target_count),
-        p_is_active: partnerForm.is_active,
-      });
-      if (error) { toast.error(error.message); return; }
-      toast.success("Partner task created!");
+      const newTask = {
+        id: crypto.randomUUID(),
+        title: partnerForm.title.trim(),
+        description: partnerForm.description || null,
+        reward_amount: Number(partnerForm.reward_amount),
+        reward_type: partnerForm.reward_type,
+        token_reward_amount: tokenReward,
+        task_type: partnerForm.task_type,
+        target_count: Number(partnerForm.target_count),
+        is_active: partnerForm.is_active,
+        created_at: new Date().toISOString(),
+      };
+      try {
+        await savePartnerTasksToSettings([...existing, newTask]);
+        toast.success("Partner task created!");
+      } catch (err: any) { toast.error(err.message); return; }
     } else {
-      const { error } = await supabase.rpc("update_partner_task" as any, {
-        p_id: partnerModal.id,
-        p_title: partnerForm.title.trim(),
-        p_description: partnerForm.description || null,
-        p_reward_amount: Number(partnerForm.reward_amount),
-        p_reward_type: partnerForm.reward_type,
-        p_token_reward_amount: tokenReward,
-        p_task_type: partnerForm.task_type,
-        p_target_count: Number(partnerForm.target_count),
-        p_is_active: partnerForm.is_active,
-      });
-      if (error) { toast.error(error.message); return; }
-      toast.success("Partner task updated!");
+      const updated = existing.map((t: any) =>
+        t.id === partnerModal.id ? {
+          ...t,
+          title: partnerForm.title.trim(),
+          description: partnerForm.description || null,
+          reward_amount: Number(partnerForm.reward_amount),
+          reward_type: partnerForm.reward_type,
+          token_reward_amount: tokenReward,
+          task_type: partnerForm.task_type,
+          target_count: Number(partnerForm.target_count),
+          is_active: partnerForm.is_active,
+        } : t
+      );
+      try {
+        await savePartnerTasksToSettings(updated);
+        toast.success("Partner task updated!");
+      } catch (err: any) { toast.error(err.message); return; }
     }
     setPartnerModal(null); setIsCreating(false); fetchPartnerTasks();
   };
 
   const deletePartnerTask = async (id: string) => {
     if (!confirm("Delete this partner task? All user progress will also be deleted.")) return;
-    const { error } = await supabase.rpc("delete_partner_task" as any, { p_id: id });
-    if (error) { toast.error(error.message); return; }
-    toast.success("Deleted"); fetchPartnerTasks();
+    const existing = await loadPartnerTasksFromSettings();
+    try {
+      await savePartnerTasksToSettings(existing.filter((t: any) => t.id !== id));
+      toast.success("Deleted");
+      fetchPartnerTasks();
+    } catch (err: any) { toast.error(err.message); }
   };
 
   const togglePartnerTask = async (id: string, active: boolean) => {
-    await supabase.rpc("toggle_partner_task" as any, { p_id: id, p_is_active: !active });
+    const existing = await loadPartnerTasksFromSettings();
+    const updated = existing.map((t: any) => t.id === id ? { ...t, is_active: !active } : t);
+    await savePartnerTasksToSettings(updated);
     fetchPartnerTasks();
   };
 
