@@ -50,6 +50,7 @@ interface Prize {
   is_active: boolean;
   color?: string;
   rarity?: string;
+  prize_type?: string;
 }
 
 const parseDailyRewards = (value: unknown): number[] => {
@@ -98,6 +99,7 @@ const GameSettings = () => {
     emoji: "🪙",
     color: COLOR_PRESETS[0],
     rarity: "Common",
+    prize_type: "xp",
     image_url: "",
     sound_url: "",
     animation_url: "",
@@ -231,6 +233,7 @@ const GameSettings = () => {
         emoji: prize.emoji || "🪙",
         color: prize.color || COLOR_PRESETS[0],
         rarity: prize.rarity || "Common",
+        prize_type: prize.prize_type || "xp",
         image_url: prize.image_url || "",
         sound_url: prize.sound_url || "",
         animation_url: prize.animation_url || "",
@@ -243,6 +246,7 @@ const GameSettings = () => {
         emoji: "🪙",
         color: COLOR_PRESETS[0],
         rarity: "Common",
+        prize_type: "xp",
         image_url: "",
         sound_url: "",
         animation_url: "",
@@ -278,6 +282,7 @@ const GameSettings = () => {
       if (!editModal.prize) payload.sort_order = spinPrizes.length;
     } else {
       payload.rarity = form.rarity;
+      payload.prize_type = form.prize_type || "xp";
     }
 
     if (editModal.prize) {
@@ -595,7 +600,7 @@ const GameSettings = () => {
                   </Badge>
                 </div>
                 <div className="flex items-center gap-3 mt-0.5">
-                  <span className="text-[10px] text-earn">+{prize.value} coins</span>
+                  <span className="text-[10px] text-earn">+{prize.value} {prize.prize_type === "ton" ? "💎" : prize.prize_type === "token" ? "🪙" : "⭐"}</span>
                   <span className="text-[10px] text-muted-foreground">Weight: {prize.weight}</span>
                   {prize.sound_url && <Volume2 className="h-3 w-3 text-muted-foreground" />}
                 </div>
@@ -688,20 +693,45 @@ const GameSettings = () => {
             )}
 
             {editModal?.type === "box" && (
-              <div>
-                <label className="text-[10px] text-muted-foreground">Rarity</label>
-                <select
-                  value={form.rarity}
-                  onChange={(e) => setForm((prev) => ({ ...prev, rarity: e.target.value }))}
-                  className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-sm text-foreground mt-1"
-                >
-                  {RARITY_OPTIONS.map((rarity) => (
-                    <option key={rarity} value={rarity}>
-                      {rarity}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <>
+                <div>
+                  <label className="text-[10px] text-muted-foreground">Rarity</label>
+                  <select
+                    value={form.rarity}
+                    onChange={(e) => setForm((prev) => ({ ...prev, rarity: e.target.value }))}
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-sm text-foreground mt-1"
+                  >
+                    {RARITY_OPTIONS.map((rarity) => (
+                      <option key={rarity} value={rarity}>
+                        {rarity}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground">Prize Type (Currency)</label>
+                  <div className="grid grid-cols-3 gap-1.5 mt-1">
+                    {[
+                      { value: "xp", label: "⭐ XP" },
+                      { value: "token", label: "🪙 Token" },
+                      { value: "ton", label: "💎 TON" },
+                    ].map(pt => (
+                      <button
+                        key={pt.value}
+                        onClick={() => setForm(prev => ({ ...prev, prize_type: pt.value }))}
+                        className={`py-2 rounded-lg text-[11px] font-medium transition-all ${
+                          form.prize_type === pt.value ? "gradient-primary text-white" : "glass text-muted-foreground"
+                        }`}
+                      >
+                        {pt.label}
+                      </button>
+                    ))}
+                  </div>
+                  {form.prize_type === "ton" && (
+                    <p className="text-[10px] text-warning mt-1">⚠️ TON prizes are processed manually by admin</p>
+                  )}
+                </div>
+              </>
             )}
 
             <div className="space-y-2">
