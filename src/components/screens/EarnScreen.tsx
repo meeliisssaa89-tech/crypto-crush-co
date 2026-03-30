@@ -34,19 +34,19 @@ interface TaskRow {
   id: string; title: string; description: string | null; reward_amount: number;
   type: string; status: string; is_daily: boolean; url: string | null;
   verification_type: string; cooldown_seconds: number;
-  reward_type: string; token_reward_amount: number;
+  reward_type: string; token_reward_amount: number; ton_reward_amount: number;
 }
 
 interface ShortlinkRow {
   id: string; title: string; url: string; reward_amount: number;
   timer_seconds: number; network: string;
-  reward_type: string; token_reward_amount: number;
+  reward_type: string; token_reward_amount: number; ton_reward_amount: number;
 }
 
 interface AdRow {
   id: string; title: string; ad_type: string; reward_amount: number; cooldown_seconds: number;
   ad_zone_id: string | null; ads_per_click: number;
-  reward_type: string; token_reward_amount: number;
+  reward_type: string; token_reward_amount: number; ton_reward_amount: number;
 }
 
 interface PartnerTask {
@@ -56,6 +56,7 @@ interface PartnerTask {
   reward_amount: number;
   reward_type: string;
   token_reward_amount: number;
+  ton_reward_amount: number;
   task_type: string;
   target_count: number;
   is_active: boolean;
@@ -67,6 +68,13 @@ interface UserPartnerTask {
   current_count: number;
   completed: boolean;
   completed_at: string | null;
+}
+
+interface TickerConfig {
+  xp_image_url: string;
+  ton_image_url: string;
+  token_image_url: string;
+  xp_to_ton_rate: number;
 }
 
 declare global { interface Window { [key: string]: any; } }
@@ -87,8 +95,11 @@ const EarnScreen = () => {
   const [completing, setCompleting] = useState<string | null>(null);
   const [countdowns, setCountdowns] = useState<Record<string, number>>({});
   const [claimingPartner, setClaimingPartner] = useState<string | null>(null);
+  const [tickerConfig, setTickerConfig] = useState<TickerConfig>({
+    xp_image_url: "", ton_image_url: "", token_image_url: "", xp_to_ton_rate: 0.0001,
+  });
 
-  useEffect(() => { fetchAll(); }, [user]);
+  useEffect(() => { fetchAll(); fetchTickerConfig(); }, [user]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -106,6 +117,19 @@ const EarnScreen = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const fetchTickerConfig = async () => {
+    const { data } = await supabase.from("app_settings").select("*").eq("key", "ticker_config").single();
+    if (data?.value && typeof data.value === "object") {
+      const v = data.value as any;
+      setTickerConfig({
+        xp_image_url: v.xp_image_url || "",
+        ton_image_url: v.ton_image_url || "",
+        token_image_url: v.token_image_url || "",
+        xp_to_ton_rate: v.xp_to_ton_rate || 0.0001,
+      });
+    }
+  };
+
   const fetchAll = async () => {
     setLoading(true);
     await Promise.all([fetchTasks(), fetchShortlinks(), fetchAds(), fetchPartnerTasks()]);
@@ -114,9 +138,9 @@ const EarnScreen = () => {
 
   const fetchTasks = async () => {
     const { data: taskData } = await supabase.from("tasks")
-      .select("id, title, description, reward_amount, type, status, is_daily, url, verification_type, cooldown_seconds, reward_type, token_reward_amount")
+      .select("id, title, description, reward_amount, type, status, is_daily, url, verification_type, cooldown_seconds, reward_type, token_reward_amount, ton_reward_amount")
       .eq("status", "active");
-    if (taskData) setTasks(taskData);
+    if (taskData) setTasks(taskData as TaskRow[]);
 
     if (user) {
       const { data: userTasks } = await supabase.from("user_tasks").select("task_id, status, completed_at").eq("user_id", user.id);
@@ -141,9 +165,9 @@ const EarnScreen = () => {
 
   const fetchShortlinks = async () => {
     const { data } = await supabase.from("shortlinks")
-      .select("id, title, url, reward_amount, timer_seconds, network, reward_type, token_reward_amount")
+      .select("id, title, url, reward_amount, timer_seconds, network, reward_type, token_reward_amount, ton_reward_amount")
       .eq("is_active", true);
-    if (data) setShortlinks(data);
+    if (data) setShortlinks(data as ShortlinkRow[]);
 
     if (user) {
       const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -158,9 +182,9 @@ const EarnScreen = () => {
 
   const fetchAds = async () => {
     const { data } = await supabase.from("ads")
-      .select("id, title, ad_type, reward_amount, cooldown_seconds, ad_zone_id, ads_per_click, reward_type, token_reward_amount")
+      .select("id, title, ad_type, reward_amount, cooldown_seconds, ad_zone_id, ads_per_click, reward_type, token_reward_amount, ton_reward_amount")
       .eq("is_active", true);
-    if (data) setAds(data);
+    if (data) setAds(data as AdRow[]);
 
     if (user) {
       const { data: views } = await supabase.from("user_ad_views")
@@ -183,7 +207,6 @@ const EarnScreen = () => {
   };
 
   const fetchPartnerTasks = async () => {
-    // Load partner task definitions from app_settings (bypasses schema cache)
     const { data: settingsData } = await supabase
       .from("app_settings")
       .select("value")
@@ -195,7 +218,6 @@ const EarnScreen = () => {
       : [];
     setPartnerTasks(allTasks);
 
-    // Load user progress from user_partner_tasks table (via rpc if available, else silently skip)
     if (user && allTasks.length > 0) {
       try {
         const { data: userProgress } = await supabase.rpc("get_user_partner_tasks" as any, { p_user_id: user.id });
@@ -229,23 +251,33 @@ const EarnScreen = () => {
     if (taskError) { toast.error("Failed to complete task"); setCompleting(null); return; }
 
     await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: task.reward_amount });
-    if (task.reward_type === "xp_and_token" && task.token_reward_amount > 0) {
+
+    if ((task.reward_type === "xp_and_token" || task.reward_type === "xp_token_ton") && task.token_reward_amount > 0) {
       await supabase.rpc("add_tokens", { p_user_id: user.id, p_amount: task.token_reward_amount });
     }
+
+    let desc = `Task: ${task.title}`;
+    const tonAmount = task.ton_reward_amount || 0;
+    if ((task.reward_type === "xp_and_ton" || task.reward_type === "xp_token_ton") && tonAmount > 0) {
+      desc += ` | +${tonAmount} TON (manual)`;
+    }
+
     await supabase.from("transactions").insert({
       user_id: user.id, type: "task_reward", amount: task.reward_amount,
-      description: `Task: ${task.title}`, reference_id: task.id,
+      description: desc, reference_id: task.id,
     });
 
-    // Update partner task progress for tasks_completed type
     await updatePartnerTaskProgress("tasks_completed");
 
     setUserTaskMap(prev => ({ ...prev, [task.id]: "completed" }));
     hapticFeedback.notification("success");
-    const rewardMsg = task.reward_type === "xp_and_token"
-      ? `+${task.reward_amount} XP & +${task.token_reward_amount} TKN earned!`
-      : `+${task.reward_amount} XP earned!`;
-    toast.success(rewardMsg);
+
+    const parts: string[] = [`+${task.reward_amount} XP`];
+    if ((task.reward_type === "xp_and_token" || task.reward_type === "xp_token_ton") && task.token_reward_amount > 0)
+      parts.push(`+${task.token_reward_amount} TKN`);
+    if ((task.reward_type === "xp_and_ton" || task.reward_type === "xp_token_ton") && tonAmount > 0)
+      parts.push(`+${tonAmount} TON`);
+    toast.success(parts.join(" & ") + " earned!");
     refreshProfile();
 
     if (task.verification_type === "timer" && task.cooldown_seconds > 0) {
@@ -266,18 +298,26 @@ const EarnScreen = () => {
 
     await supabase.from("user_shortlinks").insert({ user_id: user.id, shortlink_id: link.id, reward_amount: link.reward_amount });
     await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: link.reward_amount });
-    if (link.reward_type === "xp_and_token" && link.token_reward_amount > 0) {
+    if ((link.reward_type === "xp_and_token" || link.reward_type === "xp_token_ton") && link.token_reward_amount > 0) {
       await supabase.rpc("add_tokens", { p_user_id: user.id, p_amount: link.token_reward_amount });
     }
-    await supabase.from("transactions").insert({ user_id: user.id, type: "shortlink", amount: link.reward_amount, description: `Shortlink: ${link.title}` });
+    const tonAmount = link.ton_reward_amount || 0;
+    let desc = `Shortlink: ${link.title}`;
+    if ((link.reward_type === "xp_and_ton" || link.reward_type === "xp_token_ton") && tonAmount > 0)
+      desc += ` | +${tonAmount} TON (manual)`;
+
+    await supabase.from("transactions").insert({ user_id: user.id, type: "shortlink", amount: link.reward_amount, description: desc });
 
     setCompletedShortlinks(prev => new Set(prev).add(link.id));
     setShortlinkEarnings(prev => prev + link.reward_amount);
     hapticFeedback.notification("success");
-    const rewardMsg = link.reward_type === "xp_and_token"
-      ? `+${link.reward_amount} XP & +${link.token_reward_amount} TKN earned!`
-      : `+${link.reward_amount} XP earned!`;
-    toast.success(rewardMsg);
+
+    const parts: string[] = [`+${link.reward_amount} XP`];
+    if ((link.reward_type === "xp_and_token" || link.reward_type === "xp_token_ton") && link.token_reward_amount > 0)
+      parts.push(`+${link.token_reward_amount} TKN`);
+    if ((link.reward_type === "xp_and_ton" || link.reward_type === "xp_token_ton") && tonAmount > 0)
+      parts.push(`+${tonAmount} TON`);
+    toast.success(parts.join(" & ") + " earned!");
     refreshProfile();
     setCompleting(null);
     setCountdowns(prev => { const n = { ...prev }; delete n[`sl_${link.id}`]; return n; });
@@ -316,40 +356,44 @@ const EarnScreen = () => {
 
     await supabase.from("user_ad_views").insert({ user_id: user.id, ad_id: ad.id, reward_amount: ad.reward_amount });
     await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: ad.reward_amount });
-    if (ad.reward_type === "xp_and_token" && ad.token_reward_amount > 0) {
+    if ((ad.reward_type === "xp_and_token" || ad.reward_type === "xp_token_ton") && ad.token_reward_amount > 0) {
       await supabase.rpc("add_tokens", { p_user_id: user.id, p_amount: ad.token_reward_amount });
     }
-    await supabase.from("transactions").insert({ user_id: user.id, type: "ad_reward", amount: ad.reward_amount, description: `Ad: ${ad.title}` });
+    const tonAmount = ad.ton_reward_amount || 0;
+    let desc = `Ad: ${ad.title}`;
+    if ((ad.reward_type === "xp_and_ton" || ad.reward_type === "xp_token_ton") && tonAmount > 0)
+      desc += ` | +${tonAmount} TON (manual)`;
 
-    // Update partner task progress for ads_watched type
+    await supabase.from("transactions").insert({ user_id: user.id, type: "ad_reward", amount: ad.reward_amount, description: desc });
+
     await updatePartnerTaskProgress("ads_watched");
 
     setAdCooldowns(prev => ({ ...prev, [ad.id]: new Date() }));
     setCountdowns(prev => ({ ...prev, [cdKey]: ad.cooldown_seconds }));
     hapticFeedback.notification("success");
-    const rewardMsg = ad.reward_type === "xp_and_token"
-      ? `+${ad.reward_amount} XP & +${ad.token_reward_amount} TKN earned! (${totalAds} ads watched)`
-      : `+${ad.reward_amount} XP earned! (${totalAds} ads watched)`;
-    toast.success(rewardMsg);
+
+    const parts: string[] = [`+${ad.reward_amount} XP`];
+    if ((ad.reward_type === "xp_and_token" || ad.reward_type === "xp_token_ton") && ad.token_reward_amount > 0)
+      parts.push(`+${ad.token_reward_amount} TKN`);
+    if ((ad.reward_type === "xp_and_ton" || ad.reward_type === "xp_token_ton") && tonAmount > 0)
+      parts.push(`+${tonAmount} TON`);
+    toast.success(parts.join(" & ") + ` earned! (${totalAds} ads watched)`);
     refreshProfile();
     setCompleting(null);
     setCountdowns(prev => { const n = { ...prev }; delete n[`watching_${ad.id}`]; return n; });
   };
 
-  // Upsert user progress - tries RPC first, then direct table, then local-only
   const upsertProgress = async (
     ptId: string, newCount: number, isCompleted: boolean, completedAt: string | null
   ): Promise<string | null> => {
-    // Try RPC function
     try {
       const { data, error } = await supabase.rpc("upsert_user_partner_task" as any, {
         p_user_id: user!.id, p_partner_task_id: ptId,
         p_current_count: newCount, p_completed: isCompleted, p_completed_at: completedAt,
       });
       if (!error) return data as string;
-    } catch { /* RPC not available yet */ }
+    } catch { }
 
-    // Try direct table access
     try {
       const { data, error } = await (supabase as any)
         .from("user_partner_tasks")
@@ -360,12 +404,11 @@ const EarnScreen = () => {
         .select("id")
         .single();
       if (!error && data) return data.id;
-    } catch { /* Table not available yet, track locally only */ }
+    } catch { }
 
     return null;
   };
 
-  // Update partner task progress client-side
   const updatePartnerTaskProgress = async (taskType: string) => {
     if (!user) return;
     try {
@@ -397,7 +440,7 @@ const EarnScreen = () => {
 
         if (isNowCompleted) {
           await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: pt.reward_amount });
-          if (pt.reward_type === "xp_and_token" && pt.token_reward_amount > 0) {
+          if ((pt.reward_type === "xp_and_token" || pt.reward_type === "xp_token_ton") && pt.token_reward_amount > 0) {
             await supabase.rpc("add_tokens", { p_user_id: user.id, p_amount: pt.token_reward_amount });
           }
           await supabase.from("transactions").insert({
@@ -415,7 +458,6 @@ const EarnScreen = () => {
     }
   };
 
-  // Claim completed partner task reward manually
   const claimPartnerTask = async (pt: PartnerTask, userProgress: UserPartnerTask | undefined) => {
     if (!user || claimingPartner) return;
     if (userProgress?.completed) {
@@ -437,7 +479,7 @@ const EarnScreen = () => {
       });
 
       await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: pt.reward_amount });
-      if (pt.reward_type === "xp_and_token" && pt.token_reward_amount > 0) {
+      if ((pt.reward_type === "xp_and_token" || pt.reward_type === "xp_token_ton") && pt.token_reward_amount > 0) {
         await supabase.rpc("add_tokens", { p_user_id: user.id, p_amount: pt.token_reward_amount });
       }
       await supabase.from("transactions").insert({
@@ -446,10 +488,12 @@ const EarnScreen = () => {
       });
 
       hapticFeedback.notification("success");
-      const msg = pt.reward_type === "xp_and_token"
-        ? `🎉 +${pt.reward_amount} XP & +${pt.token_reward_amount} TKN claimed!`
-        : `🎉 +${pt.reward_amount} XP claimed!`;
-      toast.success(msg);
+      const parts: string[] = [`+${pt.reward_amount} XP`];
+      if ((pt.reward_type === "xp_and_token" || pt.reward_type === "xp_token_ton") && pt.token_reward_amount > 0)
+        parts.push(`+${pt.token_reward_amount} TKN`);
+      if ((pt.reward_type === "xp_and_ton" || pt.reward_type === "xp_token_ton") && (pt.ton_reward_amount || 0) > 0)
+        parts.push(`+${pt.ton_reward_amount} TON`);
+      toast.success(`🎉 ${parts.join(" & ")} claimed!`);
       refreshProfile();
       fetchPartnerTasks();
     } catch (err) {
@@ -472,11 +516,47 @@ const EarnScreen = () => {
   };
 
   const completedTaskCount = Object.values(userTaskMap).filter(s => s === "completed").length;
-
   const getPartnerProgress = (ptId: string): UserPartnerTask | undefined =>
     userPartnerTasks.find(upt => upt.partner_task_id === ptId);
-
   const completedPartnerCount = userPartnerTasks.filter(u => u.completed).length;
+
+  // Currency icon component
+  const CurrencyIcon = ({ type, size = "sm" }: { type: "xp" | "ton" | "token"; size?: "sm" | "xs" }) => {
+    const cls = size === "xs" ? "w-3 h-3 rounded-full object-cover" : "w-3.5 h-3.5 rounded-full object-cover";
+    const fallbacks = { xp: "⭐", ton: "💎", token: "🪙" };
+    const urls = { xp: tickerConfig.xp_image_url, ton: tickerConfig.ton_image_url, token: tickerConfig.token_image_url };
+    if (urls[type]) return <img src={urls[type]} alt={type.toUpperCase()} className={cls} />;
+    return <span className={size === "xs" ? "text-[10px]" : "text-[11px]"}>{fallbacks[type]}</span>;
+  };
+
+  // Reward display for tasks
+  const RewardDisplay = ({ rewardAmount, rewardType, tokenAmount, tonAmount, processing }: {
+    rewardAmount: number; rewardType: string; tokenAmount: number; tonAmount: number; processing: boolean;
+  }) => {
+    if (processing) return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
+    const hasToken = (rewardType === "xp_and_token" || rewardType === "xp_token_ton") && tokenAmount > 0;
+    const hasTon = (rewardType === "xp_and_ton" || rewardType === "xp_token_ton") && tonAmount > 0;
+    return (
+      <div className="text-right flex-shrink-0 space-y-0.5">
+        <div className="flex items-center justify-end gap-0.5">
+          <p className="text-sm font-bold text-earn">+{rewardAmount}</p>
+          <CurrencyIcon type="xp" />
+        </div>
+        {hasToken && (
+          <div className="flex items-center justify-end gap-0.5">
+            <p className="text-[11px] font-semibold text-primary">+{tokenAmount}</p>
+            <CurrencyIcon type="token" size="xs" />
+          </div>
+        )}
+        {hasTon && (
+          <div className="flex items-center justify-end gap-0.5">
+            <p className="text-[11px] font-semibold text-accent">+{tonAmount}</p>
+            <CurrencyIcon type="ton" size="xs" />
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="px-4 pt-6 pb-4">
@@ -564,19 +644,13 @@ const EarnScreen = () => {
                           </div>
                         )}
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        {isProcessing ? (
-                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                        ) : (
-                          <>
-                            <p className="text-sm font-bold text-earn">+{task.reward_amount}</p>
-                            <p className="text-[9px] text-muted-foreground">XP</p>
-                            {task.reward_type === "xp_and_token" && task.token_reward_amount > 0 && (
-                              <p className="text-[9px] text-primary">+{task.token_reward_amount} TKN</p>
-                            )}
-                          </>
-                        )}
-                      </div>
+                      <RewardDisplay
+                        rewardAmount={task.reward_amount}
+                        rewardType={task.reward_type}
+                        tokenAmount={task.token_reward_amount || 0}
+                        tonAmount={task.ton_reward_amount || 0}
+                        processing={isProcessing}
+                      />
                     </button>
                   </motion.div>
                 );
@@ -628,14 +702,13 @@ const EarnScreen = () => {
                         </div>
                       )}
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      {isProcessing ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : (
-                        <>
-                          <p className="text-sm font-bold text-earn">+{link.reward_amount}</p>
-                          <p className="text-[9px] text-muted-foreground">XP</p>
-                        </>
-                      )}
-                    </div>
+                    <RewardDisplay
+                      rewardAmount={link.reward_amount}
+                      rewardType={link.reward_type}
+                      tokenAmount={link.token_reward_amount || 0}
+                      tonAmount={link.ton_reward_amount || 0}
+                      processing={isProcessing}
+                    />
                   </button>
                 </motion.div>
               );
@@ -690,19 +763,13 @@ const EarnScreen = () => {
                         </div>
                       )}
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      {isProcessing && !isWatching ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                      ) : (
-                        <>
-                          <p className="text-sm font-bold text-earn">+{ad.reward_amount}</p>
-                          <p className="text-[9px] text-muted-foreground">XP</p>
-                          {ad.reward_type === "xp_and_token" && ad.token_reward_amount > 0 && (
-                            <p className="text-[9px] text-primary">+{ad.token_reward_amount} TKN</p>
-                          )}
-                        </>
-                      )}
-                    </div>
+                    <RewardDisplay
+                      rewardAmount={ad.reward_amount}
+                      rewardType={ad.reward_type}
+                      tokenAmount={ad.token_reward_amount || 0}
+                      tonAmount={ad.ton_reward_amount || 0}
+                      processing={isProcessing && !isWatching}
+                    />
                   </button>
                 </motion.div>
               );
@@ -712,7 +779,6 @@ const EarnScreen = () => {
 
         {/* ═══ PARTNER TASKS TAB ═══ */}
         <TabsContent value="partner" className="mt-4 space-y-4">
-          {/* Header */}
           <div className="glass rounded-xl p-4 border border-primary/20">
             <div className="flex items-center gap-2 mb-1">
               <Trophy className="h-4 w-4 text-warning" />
@@ -742,6 +808,8 @@ const EarnScreen = () => {
                 const isClaiming = claimingPartner === pt.id;
                 const typeInfo = partnerTaskTypeConfig[pt.task_type] || partnerTaskTypeConfig.tasks_completed;
                 const Icon = typeInfo.icon;
+                const hasToken = (pt.reward_type === "xp_and_token" || pt.reward_type === "xp_token_ton") && pt.token_reward_amount > 0;
+                const hasTon = (pt.reward_type === "xp_and_ton" || pt.reward_type === "xp_token_ton") && (pt.ton_reward_amount || 0) > 0;
 
                 return (
                   <motion.div key={pt.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
@@ -751,7 +819,6 @@ const EarnScreen = () => {
                       "border-border"
                     }`}>
                       <div className="flex items-start gap-3">
-                        {/* Icon */}
                         <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${typeInfo.gradient} flex items-center justify-center flex-shrink-0`}>
                           {isCompleted
                             ? <CheckCircle2 className="h-5 w-5 text-white" />
@@ -759,7 +826,6 @@ const EarnScreen = () => {
                           }
                         </div>
 
-                        {/* Content */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
@@ -770,16 +836,26 @@ const EarnScreen = () => {
                                 <p className="text-[10px] text-muted-foreground mt-0.5">{pt.description}</p>
                               )}
                             </div>
-                            <div className="text-right flex-shrink-0">
-                              <p className="text-sm font-bold text-earn">+{pt.reward_amount}</p>
-                              <p className="text-[9px] text-muted-foreground">XP</p>
-                              {pt.reward_type === "xp_and_token" && pt.token_reward_amount > 0 && (
-                                <p className="text-[9px] text-primary">+{pt.token_reward_amount} TKN</p>
+                            <div className="text-right flex-shrink-0 space-y-0.5">
+                              <div className="flex items-center justify-end gap-0.5">
+                                <p className="text-sm font-bold text-earn">+{pt.reward_amount}</p>
+                                <CurrencyIcon type="xp" />
+                              </div>
+                              {hasToken && (
+                                <div className="flex items-center justify-end gap-0.5">
+                                  <p className="text-[11px] font-semibold text-primary">+{pt.token_reward_amount}</p>
+                                  <CurrencyIcon type="token" size="xs" />
+                                </div>
+                              )}
+                              {hasTon && (
+                                <div className="flex items-center justify-end gap-0.5">
+                                  <p className="text-[11px] font-semibold text-accent">+{pt.ton_reward_amount}</p>
+                                  <CurrencyIcon type="ton" size="xs" />
+                                </div>
                               )}
                             </div>
                           </div>
 
-                          {/* Task Type Badge */}
                           <div className="flex items-center gap-2 mt-1.5">
                             <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">
                               {typeInfo.label}
@@ -799,7 +875,6 @@ const EarnScreen = () => {
                             )}
                           </div>
 
-                          {/* Progress Bar */}
                           {!isCompleted && (
                             <div className="mt-2">
                               <Progress
@@ -809,7 +884,6 @@ const EarnScreen = () => {
                             </div>
                           )}
 
-                          {/* Claim Button */}
                           {isReadyToClaim && (
                             <button
                               onClick={() => claimPartnerTask(pt, progress)}
