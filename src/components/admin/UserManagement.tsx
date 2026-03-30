@@ -84,19 +84,23 @@ const UserManagement = () => {
   };
 
   const deleteUser = async (user: UserProfile) => {
-    if (!confirm(`هل أنت متأكد من حذف ${user.username || "هذا المستخدم"}؟ لا يمكن التراجع.`)) return;
-    
-    // Delete profile (cascade will handle related records)
-    const { error } = await supabase
-      .from("profiles")
-      .delete()
-      .eq("user_id", user.user_id);
-    
+    if (!confirm(`هل أنت متأكد من حذف ${user.username || "هذا المستخدم"}؟\nسيتم حذف الحساب بالكامل ولا يمكن التراجع.`)) return;
+
+    // Delete from auth.users (cascades to profiles and all related data)
+    const { error } = await supabase.rpc("delete_auth_user" as any, {
+      p_user_id: user.user_id,
+    });
+
     if (error) {
-      toast.error(error.message);
-      return;
+      // Fallback: delete profile only
+      const { error: profileErr } = await supabase
+        .from("profiles")
+        .delete()
+        .eq("user_id", user.user_id);
+      if (profileErr) { toast.error(profileErr.message); return; }
     }
-    toast.success("تم حذف المستخدم!");
+
+    toast.success("تم حذف المستخدم بالكامل!");
     fetchUsers();
   };
 
