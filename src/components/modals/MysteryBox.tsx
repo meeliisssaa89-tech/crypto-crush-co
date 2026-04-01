@@ -131,6 +131,32 @@ const MysteryBox = ({ open, onOpenChange, onReward }: MysteryBoxProps) => {
               </div>
             )}
 
+            {/* Prize Preview Bar */}
+            {prizes.length > 0 && !result && (
+              <div className="glass rounded-lg p-3 space-y-2">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider text-center">Possible Rewards</p>
+                <div className="flex flex-wrap justify-center gap-1.5">
+                  {prizes.slice(0, 8).map((prize) => (
+                    <div key={prize.id} className={`flex items-center gap-1 px-2 py-1 rounded-full bg-secondary/50 border border-border/50`}>
+                      {prize.image_url ? (
+                        <img src={prize.image_url} alt={prize.label} className="w-4 h-4 rounded-full object-cover" />
+                      ) : (
+                        <span className="text-xs">{prize.emoji || "🎁"}</span>
+                      )}
+                      <span className={`text-[9px] font-medium ${rarityColors[prize.rarity] || "text-foreground"}`}>
+                        {prize.value} XP
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-center gap-3 text-[9px] text-muted-foreground">
+                  {["Common", "Rare", "Epic", "Legendary"].filter(r => prizes.some(p => p.rarity === r)).map(r => (
+                    <span key={r} className={rarityColors[r]}>{r}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col items-center py-6 space-y-6">
               <motion.div
                 animate={boxState === "shaking" ? { rotate: [0, -10, 10, -10, 10, -5, 5, 0], scale: [1, 1.05, 1.05, 1.05, 1.05, 1.02, 1.02, 1] }
