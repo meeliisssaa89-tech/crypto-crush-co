@@ -60,9 +60,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // 🚨 لو Session موجودة لكن تخص مستخدم تيليجرام مختلف
       if (session && tgUser) {
-        const expectedEmail = `tg_${tgUser.id}@telegram.user`;
+        const emailBelongsToUser = session.user?.email?.startsWith(`tg_${tgUser.id}@`) ||
+          session.user?.email?.startsWith(`tg_${tgUser.id}_`);
 
-        if (session.user?.email !== expectedEmail) {
+        if (!emailBelongsToUser) {
           await supabase.auth.signOut();
           attemptTelegramLogin();
           return;
