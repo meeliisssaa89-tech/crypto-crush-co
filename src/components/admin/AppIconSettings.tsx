@@ -38,7 +38,7 @@ const AppIconSettings = () => {
     setLoading(true);
     const { data } = await supabase.from("app_settings").select("value").eq("key", "app_icons").maybeSingle();
     if (data?.value && Array.isArray(data.value)) {
-      const saved = data.value as IconEntry[];
+      const saved = data.value as unknown as IconEntry[];
       // Merge with defaults
       const merged = defaultIcons.map(d => {
         const found = saved.find(s => s.key === d.key);
