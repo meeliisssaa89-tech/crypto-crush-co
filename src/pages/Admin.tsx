@@ -128,11 +128,20 @@ const AdminDashboard = () => {
       url: newTask.url || null,
       description: newTask.description || null,
       status: "active",
+      reward_type: newTask.reward_type,
+      token_reward_amount: newTask.token_reward_amount,
+      verification_type: newTask.verification_type,
+      cooldown_seconds: newTask.cooldown_seconds,
+      is_daily: newTask.is_daily,
     });
     if (error) { toast.error(error.message); return; }
     toast.success("Task created!");
     setCreateTaskModal(false);
-    setNewTask({ title: "", reward_amount: 50, type: "social", url: "", description: "" });
+    setNewTask({
+      title: "", reward_amount: 50, type: "social", url: "", description: "",
+      reward_type: "xp", token_reward_amount: 0, verification_type: "manual",
+      cooldown_seconds: 0, is_daily: false,
+    });
     fetchTasks();
   };
 
