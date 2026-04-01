@@ -14,6 +14,11 @@ const ProfileScreen = () => {
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [referralCount, setReferralCount] = useState(0);
   const [totalEarned, setTotalEarned] = useState(0);
+  const [botName, setBotName] = useState("Eg_Token_bot");
+
+  useEffect(() => {
+    fetchBotName();
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -23,6 +28,18 @@ const ProfileScreen = () => {
       fetchTotalEarned();
     }
   }, [user]);
+
+  const fetchBotName = async () => {
+    const { data } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "referral_config")
+      .maybeSingle();
+    if (data?.value && typeof data.value === "object") {
+      const cfg = data.value as any;
+      if (cfg.bot_name) setBotName(cfg.bot_name);
+    }
+  };
 
   const fetchProfile = async () => {
     if (!user) return;
@@ -57,7 +74,6 @@ const ProfileScreen = () => {
     if (data) setTotalEarned(data.reduce((sum, t) => sum + Number(t.amount), 0));
   };
 
-  const botName = "Eg_Token_bot";
   const referralCode = profile?.referral_code ?? "";
   const referralLink = `https://t.me/${botName}?startapp=${referralCode}`;
   const avatarUrl = profile?.avatar_url || tgUser?.photo_url;
