@@ -450,6 +450,9 @@ const AdminDashboard = () => {
         {/* WITHDRAWALS */}
         {activeSection === "withdrawals" && <WithdrawalSettings />}
 
+        {/* APP ICONS */}
+        {activeSection === "icons" && <AppIconSettings />}
+
         {/* BROADCAST */}
         {activeSection === "broadcast" && (
           <div className="space-y-4">
