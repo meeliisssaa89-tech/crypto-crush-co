@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
       throw new Error("TELEGRAM_BOT_TOKEN not configured");
     }
 
-    const { initData } = await req.json();
+    const { initData, startParam } = await req.json();
 
     if (!initData) {
       return new Response(JSON.stringify({ error: "initData is required" }), {
@@ -185,6 +185,8 @@ Deno.serve(async (req) => {
 
     const tgUser = JSON.parse(data.user || "{}");
     const telegramId = tgUser.id;
+    // Also check start_param from initData itself
+    const referralCode = startParam || data.start_param || null;
 
     if (!telegramId) {
       return new Response(JSON.stringify({ error: "Invalid telegram user data" }), {
@@ -193,39 +195,92 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`Processing Telegram user: ${telegramId}`);
+    console.log(`Processing Telegram user: ${telegramId}, referralCode: ${referralCode}`);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // 🔎 البحث الدقيق عن مستخدم بنفس telegram id
-    // استخدام .single() بدلاً من .maybeSingle() للتأكد من وجود مستخدم واحد فقط
     const { data: existingProfile, error: searchError } = await supabase
       .from("profiles")
       .select("user_id, telegram_id, username")
       .eq("telegram_id", telegramId)
-      .maybeSingle(); // Use maybeSingle to allow null result
+      .maybeSingle();
 
     let userId: string;
+    let isNewUser = false;
 
     if (existingProfile) {
-      // المستخدم موجود بالفعل
-      console.log(
-        `Existing user found for telegram ID ${telegramId}: ${existingProfile.user_id}`
-      );
+      console.log(`Existing user found for telegram ID ${telegramId}: ${existingProfile.user_id}`);
       userId = existingProfile.user_id;
+
+      // Update profile info from Telegram
+      await supabase.from("profiles").update({
+        username: tgUser.username || tgUser.first_name,
+        avatar_url: tgUser.photo_url || null,
+      }).eq("user_id", userId);
     } else {
-      // 🆕 إنشاء مستخدم جديد
       userId = await handleNewUser(telegramId, tgUser, supabase);
+      isNewUser = true;
+
+      // Process referral for new users
+      if (referralCode) {
+        try {
+          const { data: referrerProfile } = await supabase
+            .from("profiles")
+            .select("user_id, username")
+            .eq("referral_code", referralCode)
+            .maybeSingle();
+
+          if (referrerProfile && referrerProfile.user_id !== userId) {
+            // Fetch referral config
+            const { data: configData } = await supabase
+              .from("app_settings")
+              .select("value")
+              .eq("key", "referral_config")
+              .maybeSingle();
+
+            const refConfig = (configData?.value as any) || { referral_reward_xp: 100 };
+            const rewardXp = refConfig.referral_reward_xp || 100;
+
+            // Create referral record
+            await supabase.from("referrals").insert({
+              referrer_id: referrerProfile.user_id,
+              referred_id: userId,
+              level: 1,
+              reward_amount: rewardXp,
+            });
+
+            // Reward referrer
+            await supabase.rpc("add_xp", { p_user_id: referrerProfile.user_id, p_amount: rewardXp });
+
+            // Log transaction
+            await supabase.from("transactions").insert({
+              user_id: referrerProfile.user_id,
+              type: "referral_reward",
+              amount: rewardXp,
+              description: `Referral: ${tgUser.username || tgUser.first_name} joined`,
+            });
+
+            // Update referred_by on new user profile
+            await supabase.from("profiles").update({
+              referred_by: referrerProfile.user_id,
+            }).eq("user_id", userId);
+
+            console.log(`Referral processed: ${referrerProfile.username} -> ${tgUser.username}, +${rewardXp} XP`);
+          }
+        } catch (refErr) {
+          console.error("Referral processing error:", refErr);
+        }
+      }
     }
 
-    // 🔑 تسجيل الدخول باستخدام البريد الإلكتروني المرتبط بـ telegram_id
+    // Generate session
     const email = `tg_${telegramId}@telegram.user`;
     const sessionData = await getUserSession(telegramId, email, supabase);
 
-    // Log successful authentication
+    // Log activity
     try {
       await supabase.from("activity_logs").insert({
         user_id: userId,
@@ -233,12 +288,13 @@ Deno.serve(async (req) => {
         details: {
           telegram_id: telegramId,
           username: tgUser.username || tgUser.first_name,
+          is_new: isNewUser,
+          referral_code: referralCode,
           timestamp: new Date().toISOString(),
         },
       });
     } catch (logErr) {
       console.error("Error logging activity:", logErr);
-      // Don't throw - logging failure shouldn't break the auth flow
     }
 
     return new Response(
