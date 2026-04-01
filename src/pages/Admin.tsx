@@ -56,7 +56,11 @@ const AdminDashboard = () => {
   const [withdrawalChannelId, setWithdrawalChannelId] = useState("");
 
   // New task form
-  const [newTask, setNewTask] = useState({ title: "", reward_amount: 50, type: "social", url: "", description: "" });
+  const [newTask, setNewTask] = useState({
+    title: "", reward_amount: 50, type: "social", url: "", description: "",
+    reward_type: "xp", token_reward_amount: 0, verification_type: "manual",
+    cooldown_seconds: 0, is_daily: false,
+  });
 
   // Check admin role on mount
   useEffect(() => {
