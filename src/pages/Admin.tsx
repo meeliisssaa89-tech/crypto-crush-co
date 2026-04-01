@@ -340,18 +340,50 @@ const AdminDashboard = () => {
                   <Input placeholder="Task title" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} className="bg-secondary/50" />
                   <Input placeholder="Description" value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} className="bg-secondary/50" />
                   <div className="grid grid-cols-2 gap-3">
-                    <Input type="number" placeholder="Reward" value={newTask.reward_amount} onChange={(e) => setNewTask({ ...newTask, reward_amount: Number(e.target.value) })} className="bg-secondary/50" />
+                    <Input type="number" placeholder="XP Reward" value={newTask.reward_amount} onChange={(e) => setNewTask({ ...newTask, reward_amount: Number(e.target.value) })} className="bg-secondary/50" />
                     <select
                       value={newTask.type}
                       onChange={(e) => setNewTask({ ...newTask, type: e.target.value })}
                       className="bg-secondary/50 border border-border rounded-md px-3 text-sm text-foreground"
                     >
                       <option value="social">Social</option>
+                      <option value="join_channel">Join Channel</option>
+                      <option value="join_group">Join Group</option>
+                      <option value="external_link">External Link</option>
                       <option value="install">Install</option>
                       <option value="survey">Survey</option>
                       <option value="daily">Daily</option>
                       <option value="referral">Referral</option>
                     </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <select
+                      value={newTask.reward_type}
+                      onChange={(e) => setNewTask({ ...newTask, reward_type: e.target.value })}
+                      className="bg-secondary/50 border border-border rounded-md px-3 text-sm text-foreground"
+                    >
+                      <option value="xp">XP Only</option>
+                      <option value="xp_and_token">XP + Token</option>
+                    </select>
+                    {newTask.reward_type === "xp_and_token" && (
+                      <Input type="number" placeholder="Token Amount" value={newTask.token_reward_amount} onChange={(e) => setNewTask({ ...newTask, token_reward_amount: Number(e.target.value) })} className="bg-secondary/50" />
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <select
+                      value={newTask.verification_type}
+                      onChange={(e) => setNewTask({ ...newTask, verification_type: e.target.value })}
+                      className="bg-secondary/50 border border-border rounded-md px-3 text-sm text-foreground"
+                    >
+                      <option value="manual">Manual</option>
+                      <option value="timer">Timer</option>
+                      <option value="auto">Auto</option>
+                    </select>
+                    <Input type="number" placeholder="Cooldown (s)" value={newTask.cooldown_seconds} onChange={(e) => setNewTask({ ...newTask, cooldown_seconds: Number(e.target.value) })} className="bg-secondary/50" />
+                  </div>
+                  <div className="flex items-center justify-between glass rounded-lg p-2">
+                    <span className="text-xs text-foreground">Daily Task</span>
+                    <Switch checked={newTask.is_daily} onCheckedChange={(v) => setNewTask({ ...newTask, is_daily: v })} />
                   </div>
                   <Input placeholder="URL (optional)" value={newTask.url} onChange={(e) => setNewTask({ ...newTask, url: e.target.value })} className="bg-secondary/50" />
                   <Button onClick={createTask} className="w-full gradient-primary text-white border-0">Create Task</Button>
