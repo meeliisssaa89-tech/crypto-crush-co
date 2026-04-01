@@ -403,20 +403,41 @@ const AdminDashboard = () => {
                 </DialogHeader>
                 {editTaskModal && (
                   <div className="space-y-3">
-                    <Input defaultValue={editTaskModal.title} id="edit-title" className="bg-secondary/50" />
+                    <Input defaultValue={editTaskModal.title} id="edit-title" className="bg-secondary/50" placeholder="Title" />
                     <div className="grid grid-cols-2 gap-3">
-                      <Input type="number" defaultValue={editTaskModal.reward_amount} id="edit-reward" className="bg-secondary/50" />
+                      <Input type="number" defaultValue={editTaskModal.reward_amount} id="edit-reward" className="bg-secondary/50" placeholder="XP Reward" />
                       <select defaultValue={editTaskModal.status} id="edit-status" className="bg-secondary/50 border border-border rounded-md px-3 text-sm text-foreground">
                         <option value="active">Active</option>
                         <option value="paused">Paused</option>
                       </select>
                     </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <select defaultValue={editTaskModal.reward_type || "xp"} id="edit-reward-type" className="bg-secondary/50 border border-border rounded-md px-3 text-sm text-foreground">
+                        <option value="xp">XP Only</option>
+                        <option value="xp_and_token">XP + Token</option>
+                      </select>
+                      <Input type="number" defaultValue={editTaskModal.token_reward_amount || 0} id="edit-token-reward" className="bg-secondary/50" placeholder="Token Amount" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <select defaultValue={editTaskModal.verification_type || "manual"} id="edit-verification" className="bg-secondary/50 border border-border rounded-md px-3 text-sm text-foreground">
+                        <option value="manual">Manual</option>
+                        <option value="timer">Timer</option>
+                        <option value="auto">Auto</option>
+                      </select>
+                      <Input type="number" defaultValue={editTaskModal.cooldown_seconds || 0} id="edit-cooldown" className="bg-secondary/50" placeholder="Cooldown (s)" />
+                    </div>
+                    <Input defaultValue={editTaskModal.url || ""} id="edit-url" className="bg-secondary/50" placeholder="URL (optional)" />
                     <Button
                       onClick={() => {
                         const title = (document.getElementById("edit-title") as HTMLInputElement)?.value;
                         const reward = Number((document.getElementById("edit-reward") as HTMLInputElement)?.value);
                         const status = (document.getElementById("edit-status") as HTMLSelectElement)?.value;
-                        updateTask(editTaskModal.id, { title, reward_amount: reward, status });
+                        const reward_type = (document.getElementById("edit-reward-type") as HTMLSelectElement)?.value;
+                        const token_reward_amount = Number((document.getElementById("edit-token-reward") as HTMLInputElement)?.value);
+                        const verification_type = (document.getElementById("edit-verification") as HTMLSelectElement)?.value;
+                        const cooldown_seconds = Number((document.getElementById("edit-cooldown") as HTMLInputElement)?.value);
+                        const url = (document.getElementById("edit-url") as HTMLInputElement)?.value || null;
+                        updateTask(editTaskModal.id, { title, reward_amount: reward, status, reward_type, token_reward_amount, verification_type, cooldown_seconds, url });
                       }}
                       className="w-full gradient-primary text-white border-0"
                     >
