@@ -213,7 +213,9 @@ const AdminDashboard = () => {
     { id: "wallet", label: "Wallet", icon: Coins },
     { id: "games", label: "Games", icon: Gamepad2 },
     { id: "withdrawals", label: "Withdrawals", icon: ArrowDownUp },
+    { id: "icons", label: "Icons", icon: Image },
     { id: "broadcast", label: "Broadcast", icon: MessageSquare },
+    { id: "settings", label: "Settings", icon: Settings },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
