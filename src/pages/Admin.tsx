@@ -14,6 +14,7 @@ import TickerSettings from "@/components/admin/TickerSettings";
 import WalletSettings from "@/components/admin/WalletSettings";
 import WithdrawalSettings from "@/components/admin/WithdrawalSettings";
 import ReferralSettings from "@/components/admin/ReferralSettings";
+import AppIconSettings from "@/components/admin/AppIconSettings";
 import UserManagement from "@/components/admin/UserManagement";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
