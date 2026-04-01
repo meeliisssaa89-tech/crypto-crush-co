@@ -796,6 +796,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      validate_user_isolation: {
+        Args: never
+        Returns: {
+          check_name: string
+          details: string
+          status: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
