@@ -138,7 +138,7 @@ const EarnScreen = () => {
 
   const fetchTasks = async () => {
     const { data: taskData } = await supabase.from("tasks")
-      .select("id, title, description, reward_amount, type, status, is_daily, url, verification_type, cooldown_seconds, reward_type, token_reward_amount")
+      .select("id, title, description, reward_amount, type, status, is_daily, url, verification_type, cooldown_seconds, reward_type, token_reward_amount, ton_reward_amount")
       .eq("status", "active");
     if (taskData) setTasks(taskData as TaskRow[]);
 
@@ -165,7 +165,7 @@ const EarnScreen = () => {
 
   const fetchShortlinks = async () => {
     const { data } = await supabase.from("shortlinks")
-      .select("id, title, url, reward_amount, timer_seconds, network, reward_type, token_reward_amount")
+      .select("id, title, url, reward_amount, timer_seconds, network, reward_type, token_reward_amount, ton_reward_amount")
       .eq("is_active", true);
     if (data) setShortlinks(data as ShortlinkRow[]);
 
@@ -182,7 +182,7 @@ const EarnScreen = () => {
 
   const fetchAds = async () => {
     const { data } = await supabase.from("ads")
-      .select("id, title, ad_type, reward_amount, cooldown_seconds, ad_zone_id, ads_per_click, reward_type, token_reward_amount")
+      .select("id, title, ad_type, reward_amount, cooldown_seconds, ad_zone_id, ads_per_click, reward_type, token_reward_amount, ton_reward_amount")
       .eq("is_active", true);
     if (data) setAds(data as AdRow[]);
 

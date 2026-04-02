@@ -54,6 +54,7 @@ export type Database = {
           reward_type: string
           title: string
           token_reward_amount: number
+          ton_reward_amount: number
           updated_at: string
         }
         Insert: {
@@ -68,6 +69,7 @@ export type Database = {
           reward_type?: string
           title: string
           token_reward_amount?: number
+          ton_reward_amount?: number
           updated_at?: string
         }
         Update: {
@@ -82,6 +84,7 @@ export type Database = {
           reward_type?: string
           title?: string
           token_reward_amount?: number
+          ton_reward_amount?: number
           updated_at?: string
         }
         Relationships: []
@@ -317,6 +320,7 @@ export type Database = {
           timer_seconds: number
           title: string
           token_reward_amount: number
+          ton_reward_amount: number
           updated_at: string
           url: string
         }
@@ -331,6 +335,7 @@ export type Database = {
           timer_seconds?: number
           title: string
           token_reward_amount?: number
+          ton_reward_amount?: number
           updated_at?: string
           url: string
         }
@@ -345,6 +350,7 @@ export type Database = {
           timer_seconds?: number
           title?: string
           token_reward_amount?: number
+          ton_reward_amount?: number
           updated_at?: string
           url?: string
         }
@@ -411,6 +417,7 @@ export type Database = {
           status: string
           title: string
           token_reward_amount: number
+          ton_reward_amount: number
           type: string
           updated_at: string
           url: string | null
@@ -431,6 +438,7 @@ export type Database = {
           status?: string
           title: string
           token_reward_amount?: number
+          ton_reward_amount?: number
           type?: string
           updated_at?: string
           url?: string | null
@@ -451,6 +459,7 @@ export type Database = {
           status?: string
           title?: string
           token_reward_amount?: number
+          ton_reward_amount?: number
           type?: string
           updated_at?: string
           url?: string | null
