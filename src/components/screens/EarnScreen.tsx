@@ -214,7 +214,7 @@ const EarnScreen = () => {
       .maybeSingle();
 
     const allTasks: PartnerTask[] = (settingsData?.value && Array.isArray(settingsData.value))
-      ? (settingsData.value as PartnerTask[]).filter(t => t.is_active)
+      ? (settingsData.value as unknown as PartnerTask[]).filter(t => t.is_active)
       : [];
     setPartnerTasks(allTasks);
 
