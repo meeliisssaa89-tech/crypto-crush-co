@@ -165,7 +165,7 @@ const EarnScreen = () => {
 
   const fetchShortlinks = async () => {
     const { data } = await supabase.from("shortlinks")
-      .select("id, title, url, reward_amount, timer_seconds, network, reward_type, token_reward_amount")
+      .select("id, title, url, reward_amount, timer_seconds, network, reward_type, token_reward_amount, ton_reward_amount")
       .eq("is_active", true);
     if (data) setShortlinks(data as ShortlinkRow[]);
 
