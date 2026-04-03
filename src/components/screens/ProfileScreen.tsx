@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTG } from "@/components/layout/TelegramProvider";
 import { hapticFeedback, openTelegramLink, isTelegramEnvironment } from "@/hooks/useTelegram";
 import { toast } from "sonner";
+import { getLevelFromXp } from "@/lib/progression";
 
 const ProfileScreen = () => {
   const { user } = useAuth();
@@ -79,7 +80,7 @@ const ProfileScreen = () => {
   const avatarUrl = profile?.avatar_url || tgUser?.photo_url;
   const username = profile?.username ?? tgUser?.first_name ?? tgUser?.username ?? "User";
   const telegramUsername = tgUser?.username || profile?.username;
-  const level = profile?.level ?? 1;
+  const level = getLevelFromXp(profile?.xp ?? 0);
   const streakDays = profile?.streak_days ?? 0;
 
   const copyLink = () => {

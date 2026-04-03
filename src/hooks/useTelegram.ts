@@ -171,35 +171,168 @@ declare global {
   }
 }
 
+interface TelegramLaunchParams {
+  initData: string;
+  user: TelegramUser | null;
+  startParam: string | null;
+  platform: string;
+  version: string;
+}
+
+const TELEGRAM_LAUNCH_PARAMS_KEY = "telegram-mini-app-launch-params";
+
+let cachedLaunchParams: TelegramLaunchParams | null = null;
+
+const parseJson = <T,>(value: string | null): T | null => {
+  if (!value) return null;
+
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return null;
+  }
+};
+
+const decodeValue = (value: string | null) => {
+  if (!value) return "";
+
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
+const normalizeLaunchParams = (params: Partial<TelegramLaunchParams> | null): TelegramLaunchParams | null => {
+  if (!params) return null;
+
+  const normalized: TelegramLaunchParams = {
+    initData: params.initData ?? "",
+    user: params.user ?? null,
+    startParam: params.startParam ?? null,
+    platform: params.platform ?? "unknown",
+    version: params.version ?? "0.0",
+  };
+
+  if (!normalized.initData && !normalized.user && normalized.platform === "unknown" && normalized.version === "0.0") {
+    return null;
+  }
+
+  return normalized;
+};
+
+const persistLaunchParams = (params: Partial<TelegramLaunchParams> | null) => {
+  const normalized = normalizeLaunchParams(params);
+  if (!normalized) return null;
+
+  cachedLaunchParams = normalized;
+
+  try {
+    window.sessionStorage.setItem(TELEGRAM_LAUNCH_PARAMS_KEY, JSON.stringify(normalized));
+  } catch {
+    // Ignore storage access issues.
+  }
+
+  return normalized;
+};
+
+const readLaunchParamsFromStorage = () => {
+  if (cachedLaunchParams) return cachedLaunchParams;
+
+  try {
+    const raw = window.sessionStorage.getItem(TELEGRAM_LAUNCH_PARAMS_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as TelegramLaunchParams;
+    cachedLaunchParams = normalizeLaunchParams(parsed);
+    return cachedLaunchParams;
+  } catch {
+    return null;
+  }
+};
+
+const readLaunchParamsFromLocation = () => {
+  if (typeof window === "undefined") return null;
+
+  const sources = [window.location.hash.slice(1), window.location.search.slice(1)].filter(Boolean);
+
+  for (const source of sources) {
+    if (!source.includes("tgWebApp")) continue;
+
+    const params = new URLSearchParams(source);
+    const initData = decodeValue(params.get("tgWebAppData"));
+    const initDataParams = new URLSearchParams(initData);
+
+    const launchParams = persistLaunchParams({
+      initData,
+      user: parseJson<TelegramUser>(initDataParams.get("user")),
+      startParam: params.get("tgWebAppStartParam") ?? initDataParams.get("start_param"),
+      platform: params.get("tgWebAppPlatform") ?? "unknown",
+      version: params.get("tgWebAppVersion") ?? "0.0",
+    });
+
+    if (launchParams) return launchParams;
+  }
+
+  return null;
+};
+
+const getTelegramLaunchParams = () => {
+  const tg = getTelegramWebApp();
+
+  if (tg) {
+    const fromSdk = persistLaunchParams({
+      initData: tg.initData ?? "",
+      user: tg.initDataUnsafe?.user ?? null,
+      startParam: tg.initDataUnsafe?.start_param ?? null,
+      platform: tg.platform ?? "unknown",
+      version: tg.version ?? "0.0",
+    });
+
+    if (fromSdk) return fromSdk;
+  }
+
+  return readLaunchParamsFromLocation() ?? readLaunchParamsFromStorage();
+};
+
 export const getTelegramWebApp = (): TelegramWebApp | null => {
+  if (typeof window === "undefined") return null;
   return window.Telegram?.WebApp ?? null;
 };
 
 export const isTelegramEnvironment = (): boolean => {
   const tg = getTelegramWebApp();
-  return !!tg && !!tg.initData;
+  const launchParams = getTelegramLaunchParams();
+
+  return Boolean(
+    tg?.initData ||
+    tg?.initDataUnsafe?.user ||
+    launchParams?.initData ||
+    launchParams?.user ||
+    (launchParams && launchParams.platform !== "unknown")
+  );
 };
 
 export const getTelegramUser = (): TelegramUser | null => {
   const tg = getTelegramWebApp();
-  return tg?.initDataUnsafe?.user ?? null;
+  return tg?.initDataUnsafe?.user ?? getTelegramLaunchParams()?.user ?? null;
 };
 
 export const getStartParam = (): string | null => {
   const tg = getTelegramWebApp();
-  return tg?.initDataUnsafe?.start_param ?? null;
+  return tg?.initDataUnsafe?.start_param ?? getTelegramLaunchParams()?.startParam ?? null;
 };
 
 export const getInitData = (): string => {
-  return getTelegramWebApp()?.initData ?? "";
+  return getTelegramWebApp()?.initData ?? getTelegramLaunchParams()?.initData ?? "";
 };
 
 export const getPlatform = (): string => {
-  return getTelegramWebApp()?.platform ?? "unknown";
+  return getTelegramWebApp()?.platform ?? getTelegramLaunchParams()?.platform ?? "unknown";
 };
 
 export const getVersion = (): string => {
-  return getTelegramWebApp()?.version ?? "0.0";
+  return getTelegramWebApp()?.version ?? getTelegramLaunchParams()?.version ?? "0.0";
 };
 
 // Haptic Feedback

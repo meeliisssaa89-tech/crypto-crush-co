@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { hapticFeedback } from "@/hooks/useTelegram";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getLevelFromXp } from "@/lib/progression";
 
 // Sub-components
 import AirdropHeroCard from "./airdrop/AirdropHeroCard";
@@ -108,7 +109,7 @@ const AirdropScreen = () => {
     // Top 20 leaderboard
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("username, xp, user_id, level, avatar_url")
+      .select("username, xp, user_id, avatar_url")
       .order("xp", { ascending: false })
       .limit(20);
 
@@ -121,7 +122,7 @@ const AirdropScreen = () => {
         avatar: avatars[i] || "🎯",
         userId: p.user_id,
         xp: p.xp ?? 0,
-        level: p.level ?? 1,
+        level: getLevelFromXp(p.xp ?? 0),
       })));
 
       // Find user rank - if not in top 20, query separately
