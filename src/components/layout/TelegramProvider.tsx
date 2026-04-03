@@ -1,4 +1,4 @@
-import { useEffect, createContext, useContext, useState, ReactNode } from "react";
+import { useEffect, createContext, useContext, useState, ReactNode, useCallback } from "react";
 import {
   initTelegramApp,
   isTelegramEnvironment,
@@ -32,52 +32,104 @@ const TelegramContext = createContext<TelegramContextType>({
 export const useTG = () => useContext(TelegramContext);
 
 const TelegramProvider = ({ children }: { children: ReactNode }) => {
-  const [isTelegram] = useState(() => isTelegramEnvironment());
-  const [user] = useState(() => getTelegramUser());
-  const [startParam] = useState(() => getStartParam());
+  const [isTelegram, setIsTelegram] = useState(() => isTelegramEnvironment());
+  const [user, setUser] = useState(() => getTelegramUser());
+  const [startParam, setStartParam] = useState(() => getStartParam());
   const [viewportHeight, setViewportHeight] = useState(() => getViewportHeight());
   const [safeAreaTop, setSafeAreaTop] = useState(0);
   const [safeAreaBottom, setSafeAreaBottom] = useState(0);
 
+  const syncTelegramState = useCallback(() => {
+    setIsTelegram(isTelegramEnvironment());
+    setUser(getTelegramUser());
+    setStartParam(getStartParam());
+    setViewportHeight(getViewportHeight());
+    document.documentElement.style.setProperty("--tg-viewport-height", `${getViewportHeight()}px`);
+  }, []);
+
   useEffect(() => {
-    if (isTelegram) {
+    let intervalId: number | undefined;
+    let timeoutId: number | undefined;
+    let cleanupListeners: (() => void) | undefined;
+
+    const applySafeAreas = () => {
+      const sa = getSafeAreaInset();
+      const csa = getContentSafeAreaInset();
+      const nextTop = sa.top + csa.top;
+      const nextBottom = sa.bottom + csa.bottom;
+
+      setSafeAreaTop(nextTop);
+      setSafeAreaBottom(nextBottom);
+      document.documentElement.style.setProperty("--tg-safe-top", `${nextTop}px`);
+      document.documentElement.style.setProperty("--tg-safe-bottom", `${nextBottom}px`);
+    };
+
+    const setupTelegram = () => {
+      syncTelegramState();
+
+      if (!isTelegramEnvironment()) {
+        return false;
+      }
+
+      const tg = getTelegramWebApp();
+      if (!tg) {
+        applySafeAreas();
+        return false;
+      }
+
       initTelegramApp();
       console.log("[TG] Running inside Telegram Mini App");
 
-      const tg = getTelegramWebApp();
-      if (tg) {
-        // Set CSS vars for safe areas
-        const updateSafeAreas = () => {
-          const sa = getSafeAreaInset();
-          const csa = getContentSafeAreaInset();
-          setSafeAreaTop(sa.top + csa.top);
-          setSafeAreaBottom(sa.bottom + csa.bottom);
-          document.documentElement.style.setProperty("--tg-safe-top", `${sa.top + csa.top}px`);
-          document.documentElement.style.setProperty("--tg-safe-bottom", `${sa.bottom + csa.bottom}px`);
-        };
+      const updateViewport = () => {
+        const nextHeight = tg.viewportStableHeight || tg.viewportHeight || window.innerHeight;
+        setViewportHeight(nextHeight);
+        document.documentElement.style.setProperty("--tg-viewport-height", `${nextHeight}px`);
+      };
 
-        const updateViewport = () => {
-          setViewportHeight(tg.viewportStableHeight || tg.viewportHeight);
-          document.documentElement.style.setProperty("--tg-viewport-height", `${tg.viewportStableHeight || tg.viewportHeight}px`);
-        };
+      applySafeAreas();
+      updateViewport();
 
-        updateSafeAreas();
-        updateViewport();
+      tg.onEvent("viewportChanged", updateViewport);
+      tg.onEvent("safeAreaChanged", applySafeAreas);
+      tg.onEvent("contentSafeAreaChanged", applySafeAreas);
 
-        tg.onEvent("viewportChanged", updateViewport);
-        tg.onEvent("safeAreaChanged", updateSafeAreas);
-        tg.onEvent("contentSafeAreaChanged", updateSafeAreas);
+      cleanupListeners = () => {
+        tg.offEvent("viewportChanged", updateViewport);
+        tg.offEvent("safeAreaChanged", applySafeAreas);
+        tg.offEvent("contentSafeAreaChanged", applySafeAreas);
+      };
 
-        return () => {
-          tg.offEvent("viewportChanged", updateViewport);
-          tg.offEvent("safeAreaChanged", updateSafeAreas);
-          tg.offEvent("contentSafeAreaChanged", updateSafeAreas);
-        };
-      }
-    } else {
-      console.log("[TG] Running as standalone web app");
+      return true;
+    };
+
+    if (!setupTelegram()) {
+      intervalId = window.setInterval(() => {
+        if (setupTelegram() && intervalId) {
+          window.clearInterval(intervalId);
+          intervalId = undefined;
+        }
+      }, 250);
+
+      timeoutId = window.setTimeout(() => {
+        if (intervalId) {
+          window.clearInterval(intervalId);
+          intervalId = undefined;
+        }
+
+        syncTelegramState();
+
+        if (!isTelegramEnvironment()) {
+          console.log("[TG] Running as standalone web app");
+        }
+      }, 5000);
     }
-  }, [isTelegram]);
+
+    return () => {
+      if (intervalId) window.clearInterval(intervalId);
+      if (timeoutId) window.clearTimeout(timeoutId);
+      cleanupListeners?.();
+    };
+  }, [syncTelegramState]);
 
   return (
     <TelegramContext.Provider value={{ isTelegram, user, startParam, viewportHeight, safeAreaTop, safeAreaBottom }}>

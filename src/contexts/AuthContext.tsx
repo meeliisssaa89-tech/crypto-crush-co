@@ -4,6 +4,7 @@ import {
   useEffect,
   useState,
   useCallback,
+  useRef,
   ReactNode,
 } from "react";
 
@@ -38,64 +39,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [telegramAutoLogin, setTelegramAutoLogin] = useState(false);
   const [profileVersion, setProfileVersion] = useState(0);
+  const bootstrappedRef = useRef(false);
 
   const refreshProfile = useCallback(() => {
     setProfileVersion((v) => v + 1);
   }, []);
 
-  useEffect(() => {
-    // 🔹 Listener لحالة المصادقة
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      setTelegramAutoLogin(false);
-    });
+  const waitForTelegramInitData = useCallback((timeoutMs = 4000) => {
+    const initialInitData = getInitData();
+    if (initialInitData) {
+      return Promise.resolve(initialInitData);
+    }
 
-    // 🔹 التحقق من Session الحالية + مطابقتها لمستخدم Telegram
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      const tgUser = isTelegramEnvironment() ? getTelegramUser() : null;
+    return new Promise<string>((resolve) => {
+      const startedAt = Date.now();
+      const intervalId = window.setInterval(() => {
+        const nextInitData = getInitData();
 
-      // 🚨 لو Session موجودة لكن تخص مستخدم تيليجرام مختلف
-      if (session && tgUser) {
-        const emailBelongsToUser = session.user?.email?.startsWith(`tg_${tgUser.id}@`) ||
-          session.user?.email?.startsWith(`tg_${tgUser.id}_`);
-
-        if (!emailBelongsToUser) {
-          await supabase.auth.signOut();
-          attemptTelegramLogin();
+        if (nextInitData) {
+          window.clearInterval(intervalId);
+          resolve(nextInitData);
           return;
         }
-      }
 
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      // 🔹 لا يوجد Session → حاول تسجيل الدخول عبر Telegram
-      if (!session && isTelegramEnvironment()) {
-        attemptTelegramLogin();
-      } else {
-        setLoading(false);
-      }
+        if (Date.now() - startedAt >= timeoutMs) {
+          window.clearInterval(intervalId);
+          resolve("");
+        }
+      }, 250);
     });
-
-    return () => subscription.unsubscribe();
   }, []);
 
-  // 🔐 تسجيل الدخول التلقائي عبر Telegram
-  const attemptTelegramLogin = async () => {
-    const initData = getInitData();
+  const attemptTelegramLogin = useCallback(async () => {
+    setLoading(true);
+    setTelegramAutoLogin(true);
+
+    const initData = await waitForTelegramInitData();
 
     if (!initData) {
       setLoading(false);
+      setTelegramAutoLogin(false);
       return;
     }
 
-    const startParam = getStartParam(); // 🎯 كود الدعوة
-
-    setTelegramAutoLogin(true);
+    const startParam = getStartParam();
 
     try {
       const { data, error } = await supabase.functions.invoke(
@@ -119,13 +106,65 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (sessionError) {
         console.error("[TG Auth] Session error:", sessionError);
+        setLoading(false);
+        setTelegramAutoLogin(false);
       }
     } catch (err) {
       console.error("[TG Auth] Error:", err);
       setLoading(false);
       setTelegramAutoLogin(false);
     }
-  };
+  }, [waitForTelegramInitData]);
+
+  useEffect(() => {
+    // 🔹 Listener لحالة المصادقة
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session || bootstrappedRef.current) {
+        setLoading(false);
+        setTelegramAutoLogin(false);
+      }
+    });
+
+    // 🔹 التحقق من Session الحالية + مطابقتها لمستخدم Telegram
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const tgUser = isTelegramEnvironment() ? getTelegramUser() : null;
+
+      // 🚨 لو Session موجودة لكن تخص مستخدم تيليجرام مختلف
+      if (session && tgUser) {
+        const emailBelongsToUser = session.user?.email?.startsWith(`tg_${tgUser.id}@`) ||
+          session.user?.email?.startsWith(`tg_${tgUser.id}_`);
+
+        if (!emailBelongsToUser) {
+          await supabase.auth.signOut();
+          bootstrappedRef.current = true;
+          await attemptTelegramLogin();
+          return;
+        }
+      }
+
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      // 🔹 لا يوجد Session → حاول تسجيل الدخول عبر Telegram
+      if (!session && isTelegramEnvironment()) {
+        bootstrappedRef.current = true;
+        await attemptTelegramLogin();
+      } else {
+        bootstrappedRef.current = true;
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
+
+    return () => subscription.unsubscribe();
+  }, [attemptTelegramLogin]);
 
   const signOut = async () => {
     await supabase.auth.signOut();

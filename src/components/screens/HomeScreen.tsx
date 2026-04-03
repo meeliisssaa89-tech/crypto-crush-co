@@ -10,6 +10,7 @@ import SpinWheel from "@/components/modals/SpinWheel";
 import MysteryBox from "@/components/modals/MysteryBox";
 import DailyBonus from "@/components/modals/DailyBonus";
 import { toast } from "sonner";
+import { XP_PER_LEVEL, getLevelFromXp, getLevelProgressPercent, getLevelProgressXp } from "@/lib/progression";
 
 const HomeScreen = () => {
   const { user, profileVersion, refreshProfile } = useAuth();
@@ -114,8 +115,9 @@ const HomeScreen = () => {
   const streakDays = profile?.streak_days ?? 0;
   const totalStreakDays = 7;
   const username = profile?.username ?? tgUser?.first_name ?? user?.email?.split("@")[0] ?? "User";
-  const level = profile?.level ?? 1;
-  const xp = profile?.xp ?? 0;
+  const xp = Number(profile?.xp ?? 0);
+  const level = getLevelFromXp(xp);
+  const levelProgressXp = getLevelProgressXp(xp);
 
   const formatTimer = (secs: number) => {
     const h = Math.floor(secs / 3600);
@@ -283,8 +285,8 @@ const HomeScreen = () => {
           </div>
           <span className="text-xs gradient-text font-bold">Lv. {level}</span>
         </div>
-        <Progress value={(xp % 1000) / 10} className="h-2 bg-muted" />
-        <p className="text-[10px] text-muted-foreground mt-1">{xp} / {level * 1000} XP to Level {level + 1}</p>
+        <Progress value={getLevelProgressPercent(xp)} className="h-2 bg-muted" />
+        <p className="text-[10px] text-muted-foreground mt-1">{levelProgressXp} / {XP_PER_LEVEL} XP to Level {level + 1}</p>
       </div>
 
       {/* Recent Activity */}
